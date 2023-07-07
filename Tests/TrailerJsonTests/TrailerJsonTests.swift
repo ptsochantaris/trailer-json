@@ -11,7 +11,7 @@ final class TrailerJsonTests: XCTestCase {
         }
         XCTAssertNotNil(object)
     }
-    
+
     func testNetwork() async throws {
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0

@@ -4,9 +4,13 @@ public typealias JSON = [String: Any]
 
 private extension Slice<UnsafeRawBufferPointer> {
     var asString: String {
-        String(unsafeUninitializedCapacity: count) { pointer in
-            _ = pointer.initialize(fromContentsOf: self)
-            return count
+        if #available(macOS 11, iOS 14, *) {
+            return String(unsafeUninitializedCapacity: count) { pointer in
+                _ = pointer.initialize(fromContentsOf: self)
+                return count
+            }
+        } else {
+            return String(decoding: self, as: UTF8.self)
         }
     }
 }
