@@ -29,9 +29,7 @@ enum Benchmark {
             let objCTime = -start.timeIntervalSinceNow
 
             let start2 = Date()
-            let object2 = try jsonData.withUnsafeBytes { buffer in
-                try TrailerJson(bytes: buffer).parse()
-            }
+            let object2 = try jsonData.asJsonObject()
             let swiftTime = -start2.timeIntervalSinceNow
 
             let diff = objCTime - swiftTime

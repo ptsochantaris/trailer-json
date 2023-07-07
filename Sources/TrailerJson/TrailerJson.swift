@@ -2,15 +2,17 @@ import Foundation
 
 public typealias JSON = [String: Any]
 
+public extension Data {
+    func asJsonObject() throws -> JSON? {
+        try self.withUnsafeBytes { try TrailerJson(bytes: $0).parse() as? JSON }
+    }
+}
+
 private extension Slice<UnsafeRawBufferPointer> {
     var asString: String {
-        if #available(macOS 11, iOS 14, *) {
-            return String(unsafeUninitializedCapacity: count) { pointer in
-                _ = pointer.initialize(fromContentsOf: self)
-                return count
-            }
-        } else {
-            return String(decoding: self, as: UTF8.self)
+        return String(unsafeUninitializedCapacity: count) { pointer in
+            _ = pointer.initialize(fromContentsOf: self)
+            return count
         }
     }
 }

@@ -11,14 +11,13 @@ final class TrailerJsonTests: XCTestCase {
         }
         XCTAssertNotNil(object)
     }
-
+    
     func testNetwork() async throws {
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
-        let json = try data.withUnsafeBytes {
-            try TrailerJson(bytes: $0).parse() as? JSON
-        }
-        if let timeString = json?["time"] as? String {
+        
+        if let json = try data.asJsonObject(),
+           let timeString = json["time"] as? String {
             NSLog("The time is %@", timeString)
         } else {
             XCTFail("There is no spoon")
