@@ -1,35 +1,43 @@
 import Foundation
 
-public typealias JSON = [String: Any]
-
 public extension Data {
-    func asJsonObject() throws -> JSON? {
-        try self.withUnsafeBytes { try TrailerJson(bytes: $0).parse() as? JSON }
+    func asJson() throws -> Any? {
+        try withUnsafeBytes { try TrailerJson.parse(bytes: $0) }
+    }
+
+    func asJsonObject() throws -> [String: Any]? {
+        try asJson() as? [String: Any]
+    }
+
+    func asJsonArray() throws -> [[String: Any]]? {
+        try asJson() as? [[String: Any]]
     }
 }
 
 private extension Slice<UnsafeRawBufferPointer> {
     var asString: String {
-        return String(unsafeUninitializedCapacity: count) { pointer in
+        String(unsafeUninitializedCapacity: count) { pointer in
             _ = pointer.initialize(fromContentsOf: self)
             return count
         }
     }
 }
 
+private typealias JSON = [String: Any]
+
 public final class TrailerJson {
     private let array: UnsafeRawBufferPointer
     private let endIndex: Int
     private var readerIndex = 0
 
-    public init(bytes: UnsafeRawBufferPointer) {
+    private init(bytes: UnsafeRawBufferPointer) throws {
         array = bytes
         endIndex = bytes.endIndex
+        try consumeWhitespace()
     }
 
-    public func parse() throws -> Any? {
-        try consumeWhitespace()
-        return try parseValue()
+    public static func parse(bytes: UnsafeRawBufferPointer) throws -> Any? {
+        try TrailerJson(bytes: bytes).parseValue()
     }
 
     // MARK: Generic Value Parsing

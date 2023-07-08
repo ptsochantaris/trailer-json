@@ -14,18 +14,26 @@ Because it heavily trades features for decode-only performance, and that it retu
 
 👍 Ideal for parsing stable and known service API responses like GraphQL, or on embedded devices. Self contained with no setup overhead.
 
-👎 Bad at parsing/verifying potentially broken JSON, or APIs which may suddenly include unexpected schema entries.
+👎 Bad at parsing/verifying potentially broken JSON, APIs which may suddenly include unexpected schema entries, or when you're better served by `Decodable` types.
 
-#### Example
+#### Examples
 ```
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
         
         if let json = try data.asJsonObject(),
            let timeString = json["time"] as? String {
-            NSLog("The time is %@", timeString)
-        } else {
-            XCTFail("There is no spoon")
+           
+            print("The time is", timeString)
+        }
+```
+
+TrailerJson works directly with raw bytes so it can accept data from any type that exposes a raw byte buffer, such as NIO's ByteBuffer, without expensive casting or copies in-between:
+
+```
+        let byteBuffer: ByteBuffer = ...
+        let jsonDictionary = try byteBuffer.withVeryUnsafeBytes { 
+            try TrailerJson.parse(bytes: $0) as? [String: Any]
         }
 ```
 
