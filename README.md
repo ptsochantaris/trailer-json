@@ -1,6 +1,6 @@
 # TrailerJson
 
-A feather-weight JSON decoder in Swift, roughly based on a version of Swift.org's open source replacement for the Apple JSONSerialisation framework.
+A feather-weight JSON decoder in Swift with no dependencies. Is is roughly based on a version of Swift.org's open source replacement for the Apple JSONSerialisation framework.
 
 It is currently used in [Trailer](https://github.com/ptsochantaris/trailer) and [Trailer-CLI](https://github.com/ptsochantaris/trailer-cli) and has been heavily tested and used in production with GitHub JSON v3 and v4 API payloads.
 
