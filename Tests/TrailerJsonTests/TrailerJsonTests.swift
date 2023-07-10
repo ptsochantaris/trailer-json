@@ -9,7 +9,41 @@ final class TrailerJsonTests: XCTestCase {
         let object = try jsonData.withUnsafeBytes {
             try TrailerJson.parse(bytes: $0) as? [String: Any]
         }
-        XCTAssertNotNil(object)
+        guard let object else {
+            XCTFail()
+            return
+        }
+
+        XCTAssert(object["type"] as? String == "FeatureCollection")
+
+        let features = object["features"] as? [[String : Any]]
+        guard let features else {
+            XCTFail()
+            return
+        }
+        XCTAssert(features.count == 10000)
+        guard
+            let lastFeature = features.last,
+            let properties = lastFeature["properties"] as? [String: Any]
+        else {
+            XCTFail()
+            return
+        }
+
+        XCTAssert(properties["BLKLOT"] as? String == "0253A090")
+
+        guard let geometry = lastFeature["geometry"] as? [String: Any],
+              let coordinates = geometry["coordinates"] as? [Any],
+              let firstList = coordinates.first as? [Any],
+              let secondList = firstList.first as? [Any],
+              let number = secondList.first as? Float
+        else {
+            XCTFail()
+            return
+        }
+
+        XCTAssert(number == -122.41356780832439)
+        
     }
 
     func testNetwork() async throws {

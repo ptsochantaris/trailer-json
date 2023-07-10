@@ -64,7 +64,7 @@ public final class TrailerJson {
                 return try parseNumber(positive: false)
             case ._zero ... ._nine:
                 return try parseNumber(positive: true)
-            case ._newline, ._return, ._space, ._tab:
+            case 0 ... 32:
                 readerIndex += 1
             default:
                 throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
@@ -78,13 +78,10 @@ public final class TrailerJson {
 
     private func parseArray() throws -> [Any] {
         // parse first value or end immediatly
-        switch try consumeWhitespace() {
-        case ._closebracket:
+        if try consumeWhitespace() == ._closebracket {
             // if the first char after whitespace is a closing bracket, we found an empty array
             readerIndex += 1
             return []
-        default:
-            break
         }
 
         var array = [Any]()
@@ -123,13 +120,10 @@ public final class TrailerJson {
 
     private func parseObject() throws -> JSON {
         // parse first value or end immediatly
-        switch try consumeWhitespace() {
-        case ._closebrace:
+        if try consumeWhitespace() == ._closebrace {
             // if the first char after whitespace is a closing bracket, we found an empty array
             readerIndex += 1
             return [:]
-        default:
-            break
         }
 
         var object = JSON()
@@ -177,17 +171,15 @@ public final class TrailerJson {
         }
         return array[readerIndex]
     }
-
+    
     @discardableResult
     private func consumeWhitespace() throws -> UInt8 {
         while readerIndex < endIndex {
             let ascii = array[readerIndex]
-            switch ascii {
-            case ._newline, ._return, ._space, ._tab:
-                readerIndex += 1
-            default:
+            if ascii > 32 {
                 return ascii
             }
+            readerIndex += 1
         }
 
         throw JSONError.unexpectedEndOfFile
