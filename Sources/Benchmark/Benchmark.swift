@@ -13,7 +13,7 @@ enum Benchmark {
     }
 
     private static func main() throws {
-        print("!!! Be sure to run this with `-c release`")
+        print("!!! Be sure to run this with `-c release` or using the Benchmark scheme in Xcode")
 
         let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
@@ -25,7 +25,7 @@ enum Benchmark {
 
         for _ in 0 ..< loops {
             let start = Date()
-            let object = try! JSONSerialization.jsonObject(with: jsonData, options: [])
+            let object = try JSONSerialization.jsonObject(with: jsonData, options: [])
             let objCTime = -start.timeIntervalSinceNow
 
             let start2 = Date()
