@@ -189,7 +189,7 @@ public final class TrailerJson {
     private func skip(_ num: Int) throws {
         readerIndex += num
 
-        guard readerIndex < endIndex else {
+        guard readerIndex <= endIndex else {
             throw JSONError.unexpectedEndOfFile
         }
     }
@@ -381,7 +381,8 @@ public final class TrailerJson {
         var pastControlChar: ControlCharacter = .operand
         var numbersSinceControlChar = positive
 
-        while let byte = read() {
+        while true {
+            let byte = read() ?? 0
             switch byte {
             case ._zero ... ._nine:
                 numbersSinceControlChar = true
@@ -409,12 +410,18 @@ public final class TrailerJson {
                 pastControlChar = .expOperator
                 numbersSinceControlChar = false
 
-            case ._closebrace, ._closebracket, ._comma, ._newline, ._return, ._space, ._tab:
-                guard numbersSinceControlChar else {
-                    throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
+            case 0, ._closebrace, ._closebracket, ._comma, ._newline, ._return, ._space, ._tab:
+                if byte == 0 { // end of file, possible fragment
+                    guard numbersSinceControlChar else {
+                        throw JSONError.unexpectedEndOfFile
+                    }
+                } else {
+                    guard numbersSinceControlChar else {
+                        throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
+                    }
+                    readerIndex -= 1
                 }
 
-                readerIndex -= 1
                 switch pastControlChar {
                 case .decimalPoint:
                     let stringValue = array[startIndex ..< readerIndex].asString
@@ -450,13 +457,6 @@ public final class TrailerJson {
                 throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
             }
         }
-
-        guard numbersSinceControlChar else {
-            throw JSONError.unexpectedEndOfFile
-        }
-
-        defer { readerIndex = endIndex }
-        return array[readerIndex...].asString
     }
 
     private enum JSONError: Error {
