@@ -3,6 +3,24 @@ import Foundation
 import XCTest
 
 final class TrailerJsonTests: XCTestCase {
+    func testTrickyCharacterDecoding() throws {
+        let v1 = "Value with unicode 🙎🏽"
+        let v2 = "🙎🏽"
+        let v3 = "🙎🏽 Value with unicode"
+        let v4 = "<html><tag/>\\🙎🏽weird\\slash\\🙎🏽\\</html>"
+        let data = try JSONSerialization.data(withJSONObject: [
+            "key1": v1,
+            "key2": v2,
+            "key3": v3,
+            "key4": v4
+        ])
+        let parsedJson = try data.asJson() as? [String: String]
+        XCTAssert(parsedJson?["key1"] as? String == v1)
+        XCTAssert(parsedJson?["key2"] as? String == v2)
+        XCTAssert(parsedJson?["key3"] as? String == v3)
+        XCTAssert(parsedJson?["key4"] as? String == v4)
+    }
+    
     func testInvalidPayload() throws {
                 
         func checkThrows(_ string: String?) {
