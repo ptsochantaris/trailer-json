@@ -4,25 +4,25 @@ A feather-weight JSON decoder in Swift with no dependencies. Is is roughly based
 
 It is currently used in [Trailer](https://github.com/ptsochantaris/trailer) and [Trailer-CLI](https://github.com/ptsochantaris/trailer-cli) and has been heavily tested and used in production with GitHub JSON v3 and v4 API payloads.
 
-#### The parsers
+### The parsers
 There are two parsers in this package:
 - `TrailerJson` will parse the entire data blob in one go, producing a dictionary much like JSONSerialization does.
 - `TypedJson` will quickly scan the data blob and provide results of type `Entry`, which have typed access (`asInt`, `asFloat`, `asBool`, `asString`, etc) and parses that data only when accessed.
 
-#### Compared to JSONSerialisation (when running optimised)
+### Compared to JSONSerialisation (when running optimised)
 The `TrailerJson` parser performs almost equivalently _BUT!_ the results are all native Swift types, so using those results incurs no bridging or copying costs, which is a major performance bonus.
 
 The `TypedJson` parser is much faster, and ideal if you are only accessing a subset of the JSON data. It also makes it possible to parallelise the subsequent parsing in threads if needed.
 
-#### Compared to Swift.org's version
+### Compared to Swift.org's version
 Because it heavily trades features for decode-only performance, and that it returns native Swift types without the need to bridge them to ObjC for compatibility, it is by definition faster than the Swift.org version.
 
-#### TL;DR
+### TL;DR
 👍 Ideal for parsing stable and known service API responses like GraphQL, or on embedded devices. Self contained with no setup overhead.
 
 👎 Bad at parsing/verifying potentially broken JSON, APIs which may suddenly include unexpected schema entries, or when you're better served by `Decodable` types.
 
-#### Examples
+### Examples
 ```
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
@@ -34,7 +34,9 @@ Because it heavily trades features for decode-only performance, and that it retu
            
             print("The time is", timeString)
         }
-        
+```
+
+```        
         // TypedJson - scan the data and only parse 'time' as a String
         if let json = try data.asTypedJson(),       // scan data
            let timeField = json["time"],
@@ -62,7 +64,9 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
         }
         let number = jsonArray[1].asInt
         print(number)
-        
+```
+
+```        
         // TypedJson - using bytesNoCopy (max performance, but with caveats!)
         let number = try byteBuffer.withVeryUnsafeBytes { 
 
@@ -78,7 +82,7 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
         print(number)        
 ```
 
-#### Notes
+### Notes
 - Supports UTF8 JSON data only
 - Uses native Swift data types in the results, no bridging overheads
 - null objects, fields, or array entries are thrown away, they are not kept
@@ -86,5 +90,5 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
 - Does not support exponent numbers, only integers and floats
 - Does little to error-correct if the JSON feed isn't to spec
 
-#### License
+### License
 Copyright (c) 2023 Paul Tsochantaris. [Licensed under Apache License v2.0 with Runtime Library Exception](https://www.apache.org/licenses/LICENSE-2.0.html), as per the [open source material it is based on](https://github.com/apple/swift-corelibs-foundation/blob/bafd3d0f800397a15a3d092979ee7e788082feee/Sources/Foundation/JSONSerialization.swift)
