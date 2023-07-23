@@ -52,14 +52,18 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
 
 ```
         let byteBuffer: ByteBuffer = ...
-        
+```
+
+```
         // TrailerJson
         let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
             try TrailerJson.parse(bytes: $0) as? [Any]
         }
         let number = jsonArray[1] as? Int
         print(number)
-        
+```
+
+```        
         // TypedJson
         let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
             try TypedJson.parse(bytes: $0)
