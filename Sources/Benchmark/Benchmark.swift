@@ -36,15 +36,15 @@ enum Benchmark {
             let objCTime = -start.timeIntervalSinceNow
 
             let start2 = Date()
-            let object2 = try jsonData.asTypedJson()
+            let object2 = try jsonData.asTypedJson()?.parsed
             let swiftTime = -start2.timeIntervalSinceNow
 
             let diff = objCTime - swiftTime
             show(diff: diff, label: "TypedJson")
             times.append(diff)
 
-            withExtendedLifetime(object) {}
-            withExtendedLifetime(object2) {}
+            withExtendedLifetime(object) { }
+            withExtendedLifetime(object2) { }
         }
 
         print()
@@ -72,8 +72,8 @@ enum Benchmark {
             show(diff: diff, label: "TrailerJson")
             times.append(diff)
 
-            withExtendedLifetime(object) {}
-            withExtendedLifetime(object2) {}
+            withExtendedLifetime(object) { }
+            withExtendedLifetime(object2) { }
         }
 
         print()

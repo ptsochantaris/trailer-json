@@ -12,7 +12,8 @@ final class TypedJsonTests: XCTestCase {
         let v6 = 123
         let v7: Float = 123.6
         let v8 = -60
-        let data = try JSONSerialization.data(withJSONObject: [
+        
+        let testDictionary: [String: Any] = [
             "key1": v1,
             "😛": v2,
             "key3": v3,
@@ -21,7 +22,9 @@ final class TypedJsonTests: XCTestCase {
             "key6": v6,
             "key7": v7,
             "key8": v8
-        ] as [String: Any])
+        ]
+        
+        let data = try JSONSerialization.data(withJSONObject: testDictionary)
 
         guard let entry = try data.asTypedJson() else {
             XCTFail("Nil result")
@@ -36,6 +39,12 @@ final class TypedJsonTests: XCTestCase {
         XCTAssertEqual(entry["key6"]?.asInt, v6)
         XCTAssertEqual(entry["key7"]?.asFloat, v7)
         XCTAssertEqual(entry["key8"]?.asInt, v8)
+        
+        if let reconstructed = entry.asJsonValue as? [String: Any] {
+            XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
+        } else {
+            XCTFail()
+        }
     }
 
     func testInvalidPayload() throws {

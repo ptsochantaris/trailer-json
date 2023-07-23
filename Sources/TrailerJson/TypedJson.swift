@@ -2,11 +2,33 @@ import Foundation
 
 public final class TypedJson {
     public enum Entry {
-        case slice(TypedJson, from: Int, to: Int), object([String: Entry]), array([Entry])
+        case int(TypedJson, from: Int, to: Int),
+             float(TypedJson, from: Int, to: Int),
+             bool(TypedJson, from: Int, to: Int),
+             string(TypedJson, from: Int, to: Int),
+             object([String: Entry]),
+             array([Entry])
+
+        var value: Any? {
+            switch self {
+            case let .int(buffer, from, to):
+                return buffer.slice(from, to).asInt
+            case let .float(buffer, from, to):
+                return buffer.slice(from, to).asFloat
+            case let .bool(buffer, from, _):
+                return buffer.byte(at: from) == ._charT
+            case let .string(buffer, from, to):
+                return buffer.slice(from, to).asUnescapedString
+            case let .array(list):
+                return list
+            case .object:
+                return self
+            }
+        }
 
         public var asInt: Int? {
             switch self {
-            case let .slice(buffer, from, to):
+            case let .int(buffer, from, to):
                 return buffer.slice(from, to).asInt
             default:
                 return nil
@@ -15,7 +37,7 @@ public final class TypedJson {
 
         public var asFloat: Float? {
             switch self {
-            case let .slice(buffer, from, to):
+            case let .float(buffer, from, to):
                 return buffer.slice(from, to).asFloat
             default:
                 return nil
@@ -24,7 +46,7 @@ public final class TypedJson {
 
         public var asBool: Bool? {
             switch self {
-            case let .slice(buffer, from, _):
+            case let .bool(buffer, from, _):
                 return buffer.byte(at: from) == ._charT
             default:
                 return nil
@@ -33,7 +55,7 @@ public final class TypedJson {
 
         public var asString: String? {
             switch self {
-            case let .slice(buffer, from, to):
+            case let .string(buffer, from, to):
                 return buffer.slice(from, to).asUnescapedString
             default:
                 return nil
@@ -68,6 +90,26 @@ public final class TypedJson {
             default:
                 return nil
             }
+        }
+        
+        public var keys: [String]? {
+            switch self {
+            case let .object(map):
+                return Array(map.keys)
+            default:
+                return nil
+            }
+        }
+        
+        public var parsed: Any? {
+            if let keys {
+                var dict = [String: Any](minimumCapacity: keys.count)
+                for key in keys {
+                    dict[key] = self[key]?.parsed
+                }
+                return dict
+            }
+            return value
         }
     }
 
@@ -115,10 +157,10 @@ public final class TypedJson {
                 return try sliceArray()
             case ._charF:
                 try skip(4)
-                return .slice(self, from: readerIndex - 5, to: readerIndex)
+                return .bool(self, from: readerIndex - 5, to: readerIndex)
             case ._charT:
                 try skip(3)
-                return .slice(self, from: readerIndex - 4, to: readerIndex)
+                return .bool(self, from: readerIndex - 4, to: readerIndex)
             case ._charN:
                 try skip(3)
                 return nil
@@ -183,8 +225,7 @@ public final class TypedJson {
             return nil
         }
 
-        var map = [String: Entry]()
-        map.reserveCapacity(20)
+        var map = [String: Entry](minimumCapacity: 20)
 
         while true {
             readerIndex += 1 // quote
@@ -222,13 +263,13 @@ public final class TypedJson {
                 let previousIndex = readerIndex - 1
                 if previousIndex >= stringStartIndex, array[previousIndex] != ._backslash {
                     readerIndex += 1
-                    return .slice(self, from: stringStartIndex, to: previousIndex + 1)
+                    return .string(self, from: stringStartIndex, to: previousIndex + 1)
                 }
             }
             readerIndex += 1
         }
 
-        return .slice(self, from: stringStartIndex, to: readerIndex - 1)
+        return .string(self, from: stringStartIndex, to: readerIndex - 1)
     }
 
     private func sliceRawString() -> String {
@@ -250,18 +291,31 @@ public final class TypedJson {
 
     private func sliceNumber() -> Entry? {
         let startIndex = readerIndex - 1
+        var float = false
 
         while readerIndex < endIndex {
             switch array[readerIndex] {
+            case ._period:
+                float = true
+                readerIndex += 1
+
             case ._closebrace, ._closebracket, ._comma, ._newline, ._return, ._space, ._tab:
-                return .slice(self, from: startIndex, to: readerIndex)
+                if float {
+                    return .float(self, from: startIndex, to: readerIndex)
+                } else {
+                    return .int(self, from: startIndex, to: readerIndex)
+                }
 
             default:
                 readerIndex += 1
             }
         }
 
-        return .slice(self, from: startIndex, to: readerIndex)
+        if float {
+            return .float(self, from: startIndex, to: readerIndex)
+        } else {
+            return .int(self, from: startIndex, to: readerIndex)
+        }
     }
 
     @discardableResult

@@ -38,11 +38,22 @@ Because it heavily trades features for decode-only performance, and that it retu
         }
 ```
 
-```        
+```
         // TypedJson - scan the data and only parse 'time' as a String
         if let json = try data.asTypedJson(),       // scan data
            let timeField = json["time"],
            let timeString = timeField.asString {    // parse field
+           
+            print("The time is", timeString)
+        }
+```
+
+```
+        // TypedJson - scan and parse all the data
+        // Much faster than TrailerJson but with fewer checks
+        if let json = try data.asTypedJson().parsed,    // scan and parse data as dictionary
+           let timeField = json["time"],
+           let timeString = timeField as? String {
            
             print("The time is", timeString)
         }
@@ -73,7 +84,7 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
 ```
 
 ```        
-        // TypedJson - using bytesNoCopy (max performance, but with caveats!)
+        // TypedJson - using bytesNoCopy, lazy parsing (fast performance, but with caveats!)
         let number = try byteBuffer.withVeryUnsafeBytes { 
 
             // jsonArray and any Entry from it must not be accessed outside the closure 
@@ -86,6 +97,21 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
             return secondEntry.asInt
         }
         print(number)        
+```
+
+```
+        // TypedJson - using bytesNoCopy, eager parsing (max performance, but with caveats!)
+        let numberArray = try byteBuffer.withVeryUnsafeBytes { 
+
+            // numbers and any Entry from it must not be accessed outside the closure 
+            let numbers = try TypedJson.parse(bytesNoCopy: $0)
+
+            // but parsed value can escape
+            return numbers.parsed as! [Int]
+        }
+        let number = numberArray[1]
+        print(number)        
+
 ```
 
 ### Notes

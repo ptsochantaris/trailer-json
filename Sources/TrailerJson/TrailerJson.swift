@@ -103,8 +103,7 @@ public final class TrailerJson {
             return [:]
         }
 
-        var object = JSON()
-        object.reserveCapacity(20)
+        var object = JSON(minimumCapacity: 20)
 
         while true {
             readerIndex += 1 // quote
