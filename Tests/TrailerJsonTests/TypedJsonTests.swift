@@ -40,7 +40,7 @@ final class TypedJsonTests: XCTestCase {
         XCTAssertEqual(entry["key7"]?.asFloat, v7)
         XCTAssertEqual(entry["key8"]?.asInt, v8)
         
-        if let reconstructed = entry.asJsonValue as? [String: Any] {
+        if let reconstructed = entry.parsed as? [String: Any] {
             XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
         } else {
             XCTFail()
