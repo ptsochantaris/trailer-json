@@ -254,6 +254,10 @@ public final class TypedJson {
 
         while readerIndex < endIndex {
             if array[readerIndex] == ._quote {
+                if readerIndex == stringStartIndex {
+                    readerIndex += 1
+                    return .string(self, from: stringStartIndex, to: stringStartIndex)
+                }
                 let previousIndex = readerIndex - 1
                 if previousIndex >= stringStartIndex, array[previousIndex] != ._backslash {
                     readerIndex += 1

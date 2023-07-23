@@ -22,6 +22,7 @@ final class TypedJsonTests: XCTestCase {
             "key6": v6,
             "key7": v7,
             "key8": v8,
+            "body": "",
             "arrayOfDictionaries": [
                 ["a", "b"],
                 ["c", "d"]
@@ -56,6 +57,25 @@ final class TypedJsonTests: XCTestCase {
         }
     }
 
+    func testEmptyStringValue() throws {
+        let testDictionary: [String: Any] = ["body": ""]
+        
+        let data = try JSONSerialization.data(withJSONObject: testDictionary)
+
+        guard let entry = try data.asTypedJson() else {
+            XCTFail("Nil result")
+            return
+        }
+
+        XCTAssertEqual(entry["body"]?.asString, "")
+        
+        if let reconstructed = entry.parsed as? [String: Any] {
+            XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
+        } else {
+            XCTFail()
+        }
+    }
+    
     func testInvalidPayload() throws {
         func checkThrows(_ string: String?) {
             do {
