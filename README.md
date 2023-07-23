@@ -26,7 +26,9 @@ Because it heavily trades features for decode-only performance, and that it retu
 ```
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
-        
+```
+
+```
         // TrailerJson - parse in one go to [String: Any]
         if let json = try data.asJsonObject(),      // parse as dictionary
            let timeField = json["time"],
