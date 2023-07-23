@@ -84,7 +84,7 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
 ```
 
 ```        
-        // TypedJson - using bytesNoCopy, lazy parsing (fast performance, but with caveats!)
+        // TypedJson - using bytesNoCopy, lazy parsing (max performance, but with caveats!)
         let number = try byteBuffer.withVeryUnsafeBytes { 
 
             // jsonArray and any Entry from it must not be accessed outside the closure 
@@ -99,14 +99,17 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
         print(number)        
 ```
 
+If you need to pass a TypedJson entry into a method that needs an untyped dictionary, you can eagerly parse a chunk by using the `parse` method - but beware that this can be slow for large sets of data, so it's best used for very specific cases!
+
 ```
-        // TypedJson - using bytesNoCopy, eager parsing (max performance, but with caveats!)
+        // TypedJson - eager parsing (slowest performance)
         let numberArray = try byteBuffer.withVeryUnsafeBytes { 
 
             // numbers and any Entry from it must not be accessed outside the closure 
-            let numbers = try TypedJson.parse(bytesNoCopy: $0)
+            let numbers = try TypedJson.parse(bytes: $0)
 
-            // but parsed value can escape
+            // but parsed value can escape - note that parsing the whole document would be very slow
+            // so for cases like these the `TrailerJson` parser is 10x faster!
             return numbers.parsed as! [Int]
         }
         let number = numberArray[1]

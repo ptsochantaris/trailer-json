@@ -21,7 +21,16 @@ final class TypedJsonTests: XCTestCase {
             "key5": v5,
             "key6": v6,
             "key7": v7,
-            "key8": v8
+            "key8": v8,
+            "arrayOfDictionaries": [
+                ["a", "b"],
+                ["c", "d"]
+            ],
+            "nestedArray": [
+                "1": 1,
+                "2": ["x": "y"],
+                "3": 3,
+            ] as [String: Any]
         ]
         
         let data = try JSONSerialization.data(withJSONObject: testDictionary)

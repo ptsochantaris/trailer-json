@@ -9,7 +9,7 @@ public final class TypedJson {
              object([String: Entry]),
              array([Entry])
 
-        var value: Any? {
+        public var parsed: Any? {
             switch self {
             case let .int(buffer, from, to):
                 return buffer.slice(from, to).asInt
@@ -20,9 +20,14 @@ public final class TypedJson {
             case let .string(buffer, from, to):
                 return buffer.slice(from, to).asUnescapedString
             case let .array(list):
-                return list
-            case .object:
-                return self
+                return list.map(\.parsed)
+            case let .object(map):
+                let keys = map.keys
+                var dict = [String: Any](minimumCapacity: keys.count)
+                for key in keys {
+                    dict[key] = self[key]?.parsed
+                }
+                return dict
             }
         }
 
@@ -99,17 +104,6 @@ public final class TypedJson {
             default:
                 return nil
             }
-        }
-        
-        public var parsed: Any? {
-            if let keys {
-                var dict = [String: Any](minimumCapacity: keys.count)
-                for key in keys {
-                    dict[key] = self[key]?.parsed
-                }
-                return dict
-            }
-            return value
         }
     }
 
