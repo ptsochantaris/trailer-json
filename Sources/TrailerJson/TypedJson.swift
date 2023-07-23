@@ -96,7 +96,7 @@ public final class TypedJson {
                 return nil
             }
         }
-        
+
         public var keys: [String]? {
             switch self {
             case let .object(map):

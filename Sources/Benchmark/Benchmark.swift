@@ -43,8 +43,8 @@ enum Benchmark {
             show(diff: diff, label: "TypedJson")
             times.append(diff)
 
-            withExtendedLifetime(object) { }
-            withExtendedLifetime(object2) { }
+            withExtendedLifetime(object) {}
+            withExtendedLifetime(object2) {}
         }
 
         print()
@@ -72,8 +72,8 @@ enum Benchmark {
             show(diff: diff, label: "TrailerJson")
             times.append(diff)
 
-            withExtendedLifetime(object) { }
-            withExtendedLifetime(object2) { }
+            withExtendedLifetime(object) {}
+            withExtendedLifetime(object2) {}
         }
 
         print()
