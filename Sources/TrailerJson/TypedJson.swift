@@ -76,7 +76,7 @@ public final class TypedJson {
     private var readerIndex = 0
     private var needsDealloc: Bool
 
-    public func parseRoot() throws -> Entry? {
+    func parseRoot() throws -> Entry? {
         try consumeWhitespace()
         return try sliceValue()
     }

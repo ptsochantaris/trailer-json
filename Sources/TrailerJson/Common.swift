@@ -281,7 +281,7 @@ public extension Data {
         try asJson() as? [[String: Any]]
     }
 
-    func asTypedJson() -> TypedJson {
-        withUnsafeBytes { TypedJson(bytes: $0) }
+    func asTypedJson() throws -> TypedJson.Entry? {
+        try withUnsafeBytes { try TypedJson(bytes: $0).parseRoot() }
     }
 }

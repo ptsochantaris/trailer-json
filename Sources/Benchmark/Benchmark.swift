@@ -36,7 +36,7 @@ enum Benchmark {
             let objCTime = -start.timeIntervalSinceNow
 
             let start2 = Date()
-            let object2 = try jsonData.asTypedJson().parseRoot()
+            let object2 = try jsonData.asTypedJson()
             let swiftTime = -start2.timeIntervalSinceNow
 
             let diff = objCTime - swiftTime

@@ -23,8 +23,7 @@ final class TypedJsonTests: XCTestCase {
             "key8": v8
         ] as [String: Any])
 
-        let json = data.asTypedJson()
-        guard let entry = try json.parseRoot() else {
+        guard let entry = try data.asTypedJson() else {
             XCTFail("Nil result")
             return
         }
@@ -43,7 +42,7 @@ final class TypedJsonTests: XCTestCase {
         func checkThrows(_ string: String?) {
             do {
                 let data = string?.data(using: .utf8) ?? Data()
-                _ = try data.asTypedJson().parseRoot()
+                _ = try data.asTypedJson()
             } catch {
                 // good
             }
@@ -57,8 +56,7 @@ final class TypedJsonTests: XCTestCase {
 
     func testFragmentParsing() throws {
         func parsed(_ string: String, completion: (TypedJson.Entry?) -> Void) throws {
-            let json = string.data(using: .utf8)!.asTypedJson()
-            try completion(json.parseRoot())
+            try completion(string.data(using: .utf8)!.asTypedJson())
         }
 
         try parsed("5") {
@@ -142,9 +140,7 @@ final class TypedJsonTests: XCTestCase {
         let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
 
-        let json = jsonData.asTypedJson()
-
-        guard let object = try json.parseRoot() else {
+        guard let object = try jsonData.asTypedJson() else {
             XCTFail("Did not parse root entry")
             return
         }
@@ -183,7 +179,7 @@ final class TypedJsonTests: XCTestCase {
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
 
-        guard let object = try data.asTypedJson().parseRoot() else {
+        guard let object = try data.asTypedJson() else {
             XCTFail("Did not parse root entry")
             return
         }
