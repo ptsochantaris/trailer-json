@@ -20,7 +20,7 @@ public final class TypedJson {
             case let .string(buffer, from, to):
                 return buffer.slice(from, to).asUnescapedString
             case let .array(list):
-                return list.map(\.parsed)
+                return list.compactMap(\.parsed)
             case let .object(map):
                 let keys = map.keys
                 var dict = [String: Any](minimumCapacity: keys.count)
