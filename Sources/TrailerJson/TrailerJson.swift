@@ -1,28 +1,5 @@
 import Foundation
 
-public extension Data {
-    func asJson() throws -> Any? {
-        try withUnsafeBytes { try TrailerJson.parse(bytes: $0) }
-    }
-
-    func asJsonObject() throws -> [String: Any]? {
-        try asJson() as? [String: Any]
-    }
-
-    func asJsonArray() throws -> [[String: Any]]? {
-        try asJson() as? [[String: Any]]
-    }
-}
-
-private extension Slice<UnsafeRawBufferPointer> {
-    var asString: String {
-        String(unsafeUninitializedCapacity: count) { pointer in
-            _ = pointer.initialize(fromContentsOf: self)
-            return count
-        }
-    }
-}
-
 private typealias JSON = [String: Any]
 
 public final class TrailerJson {
@@ -171,7 +148,7 @@ public final class TrailerJson {
         }
         return array[readerIndex]
     }
-    
+
     @discardableResult
     private func consumeWhitespace() throws -> UInt8 {
         while readerIndex < endIndex {
@@ -196,12 +173,6 @@ public final class TrailerJson {
 
     // MARK: String
 
-    private enum EscapedSequenceError: Swift.Error {
-        case expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: Int)
-        case unexpectedEscapedCharacter(ascii: UInt8, index: Int)
-        case couldNotCreateUnicodeScalarFromUInt32(index: Int, unicodeScalarValue: UInt32)
-    }
-
     private func readString() throws -> String {
         var stringStartIndex = readerIndex
         var output: String?
@@ -211,9 +182,9 @@ public final class TrailerJson {
             case ._quote:
                 let currentCharIndex = readerIndex - 1
                 if let output {
-                    return output + array[stringStartIndex ..< currentCharIndex].asString
+                    return output + array[stringStartIndex ..< currentCharIndex].asRawString
                 } else {
-                    return array[stringStartIndex ..< currentCharIndex].asString
+                    return array[stringStartIndex ..< currentCharIndex].asRawString
                 }
 
             case 0 ... 31:
@@ -224,18 +195,18 @@ public final class TrailerJson {
                 // through U+001F).
                 let string: String
                 if let output {
-                    string = output + array[stringStartIndex ... currentCharIndex].asString
+                    string = output + array[stringStartIndex ... currentCharIndex].asRawString
                 } else {
-                    string = array[stringStartIndex ... currentCharIndex].asString
+                    string = array[stringStartIndex ... currentCharIndex].asRawString
                 }
                 throw JSONError.unescapedControlCharacterInString(ascii: byte, in: string, index: currentCharIndex)
 
             case ._backslash:
                 let currentCharIndex = readerIndex - 1
                 if let existing = output {
-                    output = existing + array[stringStartIndex ..< currentCharIndex].asString
+                    output = existing + array[stringStartIndex ..< currentCharIndex].asRawString
                 } else {
-                    output = array[stringStartIndex ..< currentCharIndex].asString
+                    output = array[stringStartIndex ..< currentCharIndex].asRawString
                 }
 
                 do {
@@ -247,7 +218,7 @@ public final class TrailerJson {
                     stringStartIndex = readerIndex
 
                 } catch let error as EscapedSequenceError {
-                    output! += array[currentCharIndex ..< readerIndex].asString
+                    output! += array[currentCharIndex ..< readerIndex].asRawString
                     throw JSONError.faultyEscapeSequence(error, in: output!)
                 }
 
@@ -335,10 +306,10 @@ public final class TrailerJson {
             throw JSONError.unexpectedEndOfFile
         }
 
-        guard let first = TrailerJson.hexAsciiTo4Bits(firstHex),
-              let second = TrailerJson.hexAsciiTo4Bits(secondHex),
-              let third = TrailerJson.hexAsciiTo4Bits(thirdHex),
-              let forth = TrailerJson.hexAsciiTo4Bits(forthHex)
+        guard let first = hexAsciiTo4Bits(firstHex),
+              let second = hexAsciiTo4Bits(secondHex),
+              let third = hexAsciiTo4Bits(thirdHex),
+              let forth = hexAsciiTo4Bits(forthHex)
         else {
             let hexString = String(decoding: [firstHex, secondHex, thirdHex, forthHex], as: Unicode.UTF8.self)
             throw JSONError.invalidHexDigitSequence(hexString, index: startIndex)
@@ -351,29 +322,7 @@ public final class TrailerJson {
         return bitPattern
     }
 
-    private static func hexAsciiTo4Bits(_ ascii: UInt8) -> UInt8? {
-        switch ascii {
-        case 48 ... 57:
-            return ascii - 48
-        case 65 ... 70:
-            // uppercase letters
-            return ascii - 55
-        case 97 ... 102:
-            // lowercase letters
-            return ascii - 87
-        default:
-            return nil
-        }
-    }
-
     // MARK: Numbers
-
-    private enum ControlCharacter {
-        case operand
-        case decimalPoint
-        case exp
-        case expOperator
-    }
 
     private func parseNumber(positive: Bool) throws -> Any {
         let startIndex = readerIndex - 1
@@ -410,7 +359,7 @@ public final class TrailerJson {
                 pastControlChar = .expOperator
                 numbersSinceControlChar = false
 
-            case 0, ._closebrace, ._closebracket, ._comma, ._newline, ._return, ._space, ._tab:
+            case ._closebrace, ._closebracket, ._comma, ._newline, ._return, ._space, ._tab, 0:
                 if byte == 0 { // end of file, possible fragment
                     guard numbersSinceControlChar else {
                         throw JSONError.unexpectedEndOfFile
@@ -424,13 +373,13 @@ public final class TrailerJson {
 
                 switch pastControlChar {
                 case .decimalPoint:
-                    let stringValue = array[startIndex ..< readerIndex].asString
+                    let stringValue = array[startIndex ..< readerIndex].asRawString
                     guard let result = Float(stringValue) else {
                         throw JSONError.numberIsNotRepresentableInSwift(parsed: stringValue)
                     }
                     return result
                 case .exp, .expOperator:
-                    let stringValue = array[startIndex ..< readerIndex].asString
+                    let stringValue = array[startIndex ..< readerIndex].asRawString
                     throw JSONError.numberIsNotRepresentableInSwift(parsed: stringValue)
                 case .operand:
                     let numberIndex: Int
@@ -458,81 +407,4 @@ public final class TrailerJson {
             }
         }
     }
-
-    private enum JSONError: Error {
-        case unexpectedCharacter(ascii: UInt8, characterIndex: Int)
-        case unexpectedEndOfFile
-        case faultyEscapeSequence(EscapedSequenceError, in: String)
-        case invalidHexDigitSequence(String, index: Int)
-        case unescapedControlCharacterInString(ascii: UInt8, in: String, index: Int)
-        case numberIsNotRepresentableInSwift(parsed: String)
-        case invalidUTF8Sequence(Data, characterIndex: Int)
-
-        var localizedDescription: String {
-            switch self {
-            case let .faultyEscapeSequence(error, text):
-                switch error {
-                case .couldNotCreateUnicodeScalarFromUInt32:
-                    return "Unable to convert hex escape sequence (no high character) to UTF8-encoded character. Text: \(text)"
-                case .expectedLowSurrogateUTF8SequenceAfterHighSurrogate:
-                    return "Unexpected end of file during string parse (expected low-surrogate code point but did not find one). Text: \(text)"
-                case .unexpectedEscapedCharacter:
-                    return "Invalid escape sequence. Text: \(text)"
-                }
-            case .unexpectedEndOfFile:
-                return "Unexpected end of file during JSON parse."
-            case let .unexpectedCharacter(_, characterIndex):
-                return "Invalid value around character \(characterIndex)."
-            case let .invalidHexDigitSequence(string, index: index):
-                return #"Invalid hex encoded sequence in "\#(string)" at \#(index)."#
-            case .unescapedControlCharacterInString(ascii: let ascii, in: _, index: let index) where ascii == UInt8._backslash:
-                return #"Invalid escape sequence around character \#(index)."#
-            case .unescapedControlCharacterInString(ascii: _, in: _, index: let index):
-                return #"Unescaped control character around character \#(index)."#
-            case let .numberIsNotRepresentableInSwift(parsed: parsed):
-                return #"Number \#(parsed) is not representable in Swift."#
-            case let .invalidUTF8Sequence(data, characterIndex: index):
-                return #"Invalid UTF-8 sequence \#(data) starting from character \#(index)."#
-            }
-        }
-    }
-}
-
-private extension UInt8 {
-    static let _space = UInt8(ascii: " ")
-    static let _return = UInt8(ascii: "\r")
-    static let _newline = UInt8(ascii: "\n")
-    static let _tab = UInt8(ascii: "\t")
-
-    static let _colon = UInt8(ascii: ":")
-    static let _comma = UInt8(ascii: ",")
-    static let _period = UInt8(ascii: ".")
-
-    static let _openbrace = UInt8(ascii: "{")
-    static let _closebrace = UInt8(ascii: "}")
-
-    static let _openbracket = UInt8(ascii: "[")
-    static let _closebracket = UInt8(ascii: "]")
-
-    static let _quote = UInt8(ascii: "\"")
-    static let _backslash = UInt8(ascii: "\\")
-
-    static let _minus = UInt8(ascii: "-")
-    static let _plus = UInt8(ascii: "+")
-
-    static let _zero = UInt8(ascii: "0")
-    static let _one = UInt8(ascii: "1")
-    static let _nine = UInt8(ascii: "9")
-
-    static let _charF = UInt8(ascii: "f")
-    static let _charA = UInt8(ascii: "a")
-    static let _charL = UInt8(ascii: "l")
-    static let _charS = UInt8(ascii: "s")
-    static let _charE = UInt8(ascii: "e")
-
-    static let _charR = UInt8(ascii: "r")
-    static let _charU = UInt8(ascii: "u")
-    static let _charT = UInt8(ascii: "t")
-    static let _charN = UInt8(ascii: "n")
-    static let _charCapitalE = UInt8(ascii: "E")
 }

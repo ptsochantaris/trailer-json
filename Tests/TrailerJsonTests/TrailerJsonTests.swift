@@ -20,9 +20,8 @@ final class TrailerJsonTests: XCTestCase {
         XCTAssert(parsedJson?["key3"] as? String == v3)
         XCTAssert(parsedJson?["key4"] as? String == v4)
     }
-    
+
     func testInvalidPayload() throws {
-                
         func checkThrows(_ string: String?) {
             do {
                 let data = string?.data(using: .utf8) ?? Data()
@@ -32,13 +31,13 @@ final class TrailerJsonTests: XCTestCase {
                 // good
             }
         }
-        
+
         checkThrows(nil)
         checkThrows(" ")
         checkThrows("   meh  ")
         checkThrows(" wut { \"a\":\"b\" }   meh  ")
     }
-    
+
     func testFragmentParsing() throws {
         let data0 = "5".data(using: .utf8)!
         XCTAssert(try data0.asJson() as? Int == 5)
@@ -65,26 +64,26 @@ final class TrailerJsonTests: XCTestCase {
         XCTAssert(try data23.asJson() == nil)
 
         let data30 = "  [4,5]".data(using: .utf8)!
-        XCTAssert(try data30.asJson() as? [Int] == [4,5])
+        XCTAssert(try data30.asJson() as? [Int] == [4, 5])
 
         let data31 = "[4,5] ".data(using: .utf8)!
-        XCTAssert(try data31.asJson() as? [Int] == [4,5])
+        XCTAssert(try data31.asJson() as? [Int] == [4, 5])
 
         let data32 = "[4,null,5]".data(using: .utf8)!
-        XCTAssert(try data32.asJson() as? [Int] == [4,5])
+        XCTAssert(try data32.asJson() as? [Int] == [4, 5])
 
         let data40 = "{ \"a\":\"b\" }   meh  ".data(using: .utf8)!
-        let value1 = (try data40.asJson() as? [String: Any])?["a"] as? String
+        let value1 = try (data40.asJson() as? [String: Any])?["a"] as? String
         XCTAssert(value1 == "b")
 
         let data41 = "     { \"a\":\"b\" }".data(using: .utf8)!
-        let value2 = (try data41.asJson() as? [String: Any])?["a"] as? String
+        let value2 = try (data41.asJson() as? [String: Any])?["a"] as? String
         XCTAssert(value2 == "b")
 
         let data42 = "     { \"a\":\"b\" }   meh  ".data(using: .utf8)!
-        let value3 = (try data42.asJson() as? [String: Any])?["a"] as? String
+        let value3 = try (data42.asJson() as? [String: Any])?["a"] as? String
         XCTAssert(value3 == "b")
-        
+
         let data50 = "  \"a\"".data(using: .utf8)!
         XCTAssert(try data50.asJson() as? String == "a")
 
@@ -94,7 +93,7 @@ final class TrailerJsonTests: XCTestCase {
         let data52 = "\"a\"".data(using: .utf8)!
         XCTAssert(try data52.asJson() as? String == "a")
     }
-    
+
     func testMock() throws {
         let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
@@ -108,7 +107,7 @@ final class TrailerJsonTests: XCTestCase {
 
         XCTAssert(object["type"] as? String == "FeatureCollection")
 
-        let features = object["features"] as? [[String : Any]]
+        let features = object["features"] as? [[String: Any]]
         guard let features else {
             XCTFail()
             return
@@ -135,7 +134,6 @@ final class TrailerJsonTests: XCTestCase {
         }
 
         XCTAssert(number == -122.41356780832439)
-        
     }
 
     func testNetwork() async throws {

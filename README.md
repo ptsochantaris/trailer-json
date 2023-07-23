@@ -4,14 +4,20 @@ A feather-weight JSON decoder in Swift with no dependencies. Is is roughly based
 
 It is currently used in [Trailer](https://github.com/ptsochantaris/trailer) and [Trailer-CLI](https://github.com/ptsochantaris/trailer-cli) and has been heavily tested and used in production with GitHub JSON v3 and v4 API payloads.
 
+#### The parsers
+There are two parsers in this package:
+- `TrailerJson` will parse the entire data blob in one go, producing a dictionary much like JSONSerialization does.
+- `TypedJson` will quickly scan the data blob and provide results of type `Entry`, which have typed access (`asInt`, `asFloat`, `asBool`, `asString`, etc) and parses that data only when accessed.
+
 #### Compared to JSONSerialisation (when running optimised)
-It performs almost equivalently _BUT!_ the results are all native Swift types, so using those results incurs no bridging or copying costs, which is a major performance bonus.
+The `TrailerJson` parser performs almost equivalently _BUT!_ the results are all native Swift types, so using those results incurs no bridging or copying costs, which is a major performance bonus.
+
+The `TypedJson` parser is much faster, and ideal if you are only accessing a subset of the JSON data. It also makes it possible to parallelise the subsequent parsing in threads if needed.
 
 #### Compared to Swift.org's version
 Because it heavily trades features for decode-only performance, and that it returns native Swift types without the need to bridge them to ObjC for compatibility, it is by definition faster than the Swift.org version.
 
 #### TL;DR
-
 👍 Ideal for parsing stable and known service API responses like GraphQL, or on embedded devices. Self contained with no setup overhead.
 
 👎 Bad at parsing/verifying potentially broken JSON, APIs which may suddenly include unexpected schema entries, or when you're better served by `Decodable` types.
@@ -21,8 +27,18 @@ Because it heavily trades features for decode-only performance, and that it retu
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
         
-        if let json = try data.asJsonObject(),
-           let timeString = json["time"] as? String {
+        // TrailerJson - parse in one go to [String: Any]
+        if let json = try data.asJsonObject(),      // parse as dictionary
+           let timeField = json["time"],
+           let timeString = timeField as? String {
+           
+            print("The time is", timeString)
+        }
+        
+        // TypedJson - scan the data and only parse 'time' as a String
+        if let json = try data.asTypedJson(),       // scan data
+           let timeField = json["time"],
+           let timeString = timeField.asString {    // parse field
            
             print("The time is", timeString)
         }
@@ -32,9 +48,34 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
 
 ```
         let byteBuffer: ByteBuffer = ...
-        let jsonDictionary = try byteBuffer.withVeryUnsafeBytes { 
-            try TrailerJson.parse(bytes: $0) as? [String: Any]
+        
+        // TrailerJson
+        let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
+            try TrailerJson.parse(bytes: $0) as? [Any]
         }
+        let number = jsonArray[1] as? Int
+        print(number)
+        
+        // TypedJson
+        let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
+            try TypedJson.parse(bytes: $0)
+        }
+        let number = jsonArray[1].asInt
+        print(number)
+        
+        // TypedJson - using bytesNoCopy (max performance, but with caveats!)
+        let number = try byteBuffer.withVeryUnsafeBytes { 
+
+            // jsonArray and any Entry from it must not be accessed outside the closure 
+            let jsonArray = try TypedJson.parse(bytesNoCopy: $0)
+
+            // `secondEntry` reads from the original bytes, so it can't escape 
+            let secondEntry = jsonArray[1]
+
+            // but parsed values can escape
+            return secondEntry.asInt
+        }
+        print(number)        
 ```
 
 #### Notes
