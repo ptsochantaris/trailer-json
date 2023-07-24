@@ -53,6 +53,8 @@ enum JSONError: Error {
     case unescapedControlCharacterInString(ascii: UInt8, in: String, index: Int)
     case numberIsNotRepresentableInSwift(parsed: String)
     case invalidUTF8Sequence(Data, characterIndex: Int)
+    case incorrectTypeRequested(requested: String, detected: String)
+    case fieldNotFound(field: String)
 
     var localizedDescription: String {
         switch self {
@@ -65,6 +67,10 @@ enum JSONError: Error {
             case .unexpectedEscapedCharacter:
                 return "Invalid escape sequence. Text: \(text)"
             }
+        case let .incorrectTypeRequested(requested, detected):
+            return "Type requested ('\(requested)') did not match the type detected by the parser for this value ('\(detected)')."
+        case let .fieldNotFound(field):
+            return "Field '\(field)' not found in this object."
         case .unexpectedEndOfFile:
             return "Unexpected end of file during JSON parse."
         case let .unexpectedCharacter(_, characterIndex):
@@ -98,52 +104,54 @@ extension Slice<UnsafeRawBufferPointer> {
         }
     }
 
-    var asUnescapedString: String? {
-        var output: String?
-        var readerIndex = startIndex
-        let end = endIndex
-
-        guard readerIndex < end else {
-            return ""
-        }
-
-        var segmentStartIndex = readerIndex
-
-        while readerIndex < end {
-            let byte = self[readerIndex]
-
-            switch byte {
-            case 0 ... 31:
-                return nil
-
-            case ._backslash:
-                if let existing = output {
-                    output = existing + self[segmentStartIndex ..< readerIndex].asRawString
-                } else {
-                    output = self[segmentStartIndex ..< readerIndex].asRawString
-                }
-
-                readerIndex += 1
-                let seq = parseEscapeSequence(at: readerIndex)
-                if let text = seq.1 {
-                    if let existing = output {
-                        output = existing + text
-                    } else {
-                        output = text
-                    }
-                }
-                readerIndex += seq.0
-                segmentStartIndex = readerIndex
-
-            default:
-                readerIndex += 1
+    var asUnescapedString: String {
+        get throws {
+            var output: String?
+            var readerIndex = startIndex
+            let end = endIndex
+            
+            guard readerIndex < end else {
+                return ""
             }
-        }
-
-        if let output {
-            return output + self[segmentStartIndex ..< readerIndex].asRawString
-        } else {
-            return self[segmentStartIndex ..< readerIndex].asRawString
+            
+            var segmentStartIndex = readerIndex
+            
+            while readerIndex < end {
+                let byte = self[readerIndex]
+                
+                switch byte {
+                case 0 ... 31:
+                    throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
+                    
+                case ._backslash:
+                    if let existing = output {
+                        output = existing + self[segmentStartIndex ..< readerIndex].asRawString
+                    } else {
+                        output = self[segmentStartIndex ..< readerIndex].asRawString
+                    }
+                    
+                    readerIndex += 1
+                    let seq = parseEscapeSequence(at: readerIndex)
+                    if let text = seq.1 {
+                        if let existing = output {
+                            output = existing + text
+                        } else {
+                            output = text
+                        }
+                    }
+                    readerIndex += seq.0
+                    segmentStartIndex = readerIndex
+                    
+                default:
+                    readerIndex += 1
+                }
+            }
+            
+            if let output {
+                return output + self[segmentStartIndex ..< readerIndex].asRawString
+            } else {
+                return self[segmentStartIndex ..< readerIndex].asRawString
+            }
         }
     }
 
@@ -244,12 +252,24 @@ extension Slice<UnsafeRawBufferPointer> {
         return UInt16(firstByte) << 8 | UInt16(secondByte)
     }
 
-    var asInt: Int? {
-        Int(self[startIndex ..< endIndex].asRawString)
+    var asInt: Int {
+        get throws {
+            let str = self[startIndex ..< endIndex].asRawString
+            if let value = Int(str) {
+                return value
+            }
+            throw JSONError.numberIsNotRepresentableInSwift(parsed: str)
+        }
     }
 
-    var asFloat: Float? {
-        Float(self[startIndex ..< endIndex].asRawString)
+    var asFloat: Float {
+        get throws {
+            let str = self[startIndex ..< endIndex].asRawString
+            if let value = Float(str) {
+                return value
+            }
+            throw JSONError.numberIsNotRepresentableInSwift(parsed: str)
+        }
     }
 }
 

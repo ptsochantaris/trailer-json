@@ -40,20 +40,9 @@ Because it heavily trades features for decode-only performance, and that it retu
 
 ```
         // TypedJson - scan the data and only parse 'time' as a String
-        if let json = try data.asTypedJson(),       // scan data
-           let timeField = json["time"],
-           let timeString = timeField.asString {    // parse field
-           
-            print("The time is", timeString)
-        }
-```
-
-```
-        // TypedJson - scan and parse all the data
-        // Much faster than TrailerJson but with fewer checks
-        if let json = try data.asTypedJson().parsed,    // scan and parse data as dictionary
-           let timeField = json["time"],
-           let timeString = timeField as? String {
+        if let json = try data.asTypedJson(),         // scan data
+           let timeField = try? json["time"],
+           let timeString = try? timeField.asString { // parse field
            
             print("The time is", timeString)
         }
@@ -91,15 +80,15 @@ TrailerJson works directly with raw bytes so it can accept data from any type th
             let jsonArray = try TypedJson.parse(bytesNoCopy: $0)
 
             // `secondEntry` reads from the original bytes, so it can't escape 
-            let secondEntry = jsonArray[1]
+            let secondEntry = try jsonArray[1]
 
             // but parsed values can escape
-            return secondEntry.asInt
+            return try secondEntry.asInt
         }
         print(number)        
 ```
 
-If you need to pass a TypedJson entry into a method that needs an untyped dictionary, you can eagerly parse a chunk by using the `parse` method - but beware that this can be slow for large sets of data, so it's best used for very specific cases!
+If you need to pass a TypedJson entry into a method that needs an untyped dictionary, you can eagerly parse a chunk by using the `parse` method - but beware that this can be slow for large sets of data, so it is best used for very specific cases!
 
 ```
         // TypedJson - eager parsing (slowest performance)
@@ -108,13 +97,12 @@ If you need to pass a TypedJson entry into a method that needs an untyped dictio
             // numbers and any Entry from it must not be accessed outside the closure 
             let numbers = try TypedJson.parse(bytes: $0)
 
-            // but parsed value can escape - note that parsing the whole document would be very slow
-            // so for cases like these the `TrailerJson` parser is 10x faster!
-            return numbers.parsed as! [Int]
+            // but parsed value can escape - note that parsing the whole document would be 
+            // very slow, so for cases like these the `TrailerJson` parser is 10x faster!
+            return try numbers.parsed as! [Int]
         }
         let number = numberArray[1]
         print(number)        
-
 ```
 
 ### Notes

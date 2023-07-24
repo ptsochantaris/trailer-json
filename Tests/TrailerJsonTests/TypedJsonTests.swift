@@ -41,16 +41,16 @@ final class TypedJsonTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(entry["key1"]?.asString, v1)
-        XCTAssertEqual(entry["😛"]?.asString, v2)
-        XCTAssertEqual(entry["key3"]?.asString, v3)
-        XCTAssertEqual(entry["key4"]?.asString, v4)
-        XCTAssertEqual(entry["key5"]?.asString, v5)
-        XCTAssertEqual(entry["key6"]?.asInt, v6)
-        XCTAssertEqual(entry["key7"]?.asFloat, v7)
-        XCTAssertEqual(entry["key8"]?.asInt, v8)
+        try XCTAssertEqual(entry["key1"].asString, v1)
+        try XCTAssertEqual(entry["😛"].asString, v2)
+        try XCTAssertEqual(entry["key3"].asString, v3)
+        try XCTAssertEqual(entry["key4"].asString, v4)
+        try XCTAssertEqual(entry["key5"].asString, v5)
+        try XCTAssertEqual(entry["key6"].asInt, v6)
+        try XCTAssertEqual(entry["key7"].asFloat, v7)
+        try XCTAssertEqual(entry["key8"].asInt, v8)
 
-        if let reconstructed = entry.parsed as? [String: Any] {
+        if let reconstructed = try entry.parsed as? [String: Any] {
             XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
         } else {
             XCTFail()
@@ -67,9 +67,9 @@ final class TypedJsonTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(entry["body"]?.asString, "")
+        try XCTAssertEqual(entry["body"].asString, "")
 
-        if let reconstructed = entry.parsed as? [String: Any] {
+        if let reconstructed = try entry.parsed as? [String: Any] {
             XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
         } else {
             XCTFail()
@@ -80,7 +80,7 @@ final class TypedJsonTests: XCTestCase {
         func checkThrows(_ string: String?) {
             do {
                 let data = string?.data(using: .utf8) ?? Data()
-                _ = try data.asTypedJson()
+                _ = try data.asTypedJson()?.parsed
             } catch {
                 // good
             }
@@ -90,27 +90,65 @@ final class TypedJsonTests: XCTestCase {
         checkThrows(" ")
         checkThrows("   meh  ")
         checkThrows(" wut { \"a\":\"b\" }   meh  ")
+        
+        let test = "[5, 5.5, \"a\",[1,2],{\"a\":\"b\"}]".data(using: .utf8)!
+        let json = try! test.asTypedJson()!
+        
+        func checkTypeError(shouldThrow: Bool, block: () throws -> Void) throws {
+            do {
+                try block()
+                if shouldThrow {
+                    XCTFail()
+                }
+            } catch let error as JSONError {
+                if case .incorrectTypeRequested = error {
+                    if !shouldThrow {
+                        XCTFail()
+                    }
+                } else {
+                    throw error
+                }
+            }
+        }
+        
+        for i in 0 ..< 4 {
+            try checkTypeError(shouldThrow: i != 0) {
+                try _ = json[i].asInt
+            }
+            try checkTypeError(shouldThrow: i != 1) {
+                try _ = json[i].asFloat
+            }
+            try checkTypeError(shouldThrow: i != 2) {
+                try _ = json[i].asString
+            }
+            try checkTypeError(shouldThrow: i != 3) {
+                try _ = json[i].asArray
+            }
+            try checkTypeError(shouldThrow: i != 4) {
+                try _ = json[i].keys
+            }
+        }
     }
 
     func testFragmentParsing() throws {
-        func parsed(_ string: String, completion: (TypedJson.Entry?) -> Void) throws {
+        func parsed(_ string: String, completion: (TypedJson.Entry?) throws -> Void) throws {
             try completion(string.data(using: .utf8)!.asTypedJson())
         }
 
         try parsed("5") {
-            XCTAssert($0?.asInt == 5)
+            try XCTAssert($0?.asInt == 5)
         }
 
         try parsed("  5") {
-            XCTAssert($0?.asInt == 5)
+            try XCTAssert($0?.asInt == 5)
         }
 
         try parsed("  5  ") {
-            XCTAssert($0?.asInt == 5)
+            try XCTAssert($0?.asInt == 5)
         }
 
         try parsed("5,3") {
-            XCTAssert($0?.asInt == 5)
+            try XCTAssert($0?.asInt == 5)
         }
 
         try parsed("null") {
@@ -126,55 +164,55 @@ final class TypedJsonTests: XCTestCase {
         }
 
         try parsed("  [4,5]") {
-            XCTAssert($0?[0]?.asInt == 4)
-            XCTAssert($0?[1]?.asInt == 5)
+            try XCTAssert($0?[0].asInt == 4)
+            try XCTAssert($0?[1].asInt == 5)
         }
 
         try parsed(" [4,5]") {
-            XCTAssert($0?[0]?.asInt == 4)
-            XCTAssert($0?[1]?.asInt == 5)
+            try XCTAssert($0?[0].asInt == 4)
+            try XCTAssert($0?[1].asInt == 5)
         }
 
         try parsed("[4,5] ") {
-            XCTAssert($0?[0]?.asInt == 4)
-            XCTAssert($0?[1]?.asInt == 5)
+            try XCTAssert($0?[0].asInt == 4)
+            try XCTAssert($0?[1].asInt == 5)
         }
 
         try parsed(" [  4,null ,5  ]") {
-            XCTAssert($0?[0]?.asInt == 4)
-            XCTAssert($0?[1]?.asInt == 5)
+            try XCTAssert($0?[0].asInt == 4)
+            try XCTAssert($0?[1].asInt == 5)
         }
 
         try parsed("{ \"a\":\"b\" }   meh  ") {
-            XCTAssert($0?["a"]?.asString == "b")
+            try XCTAssert($0?["a"].asString == "b")
         }
 
         try parsed("    { \"a\":\"b\" }   meh  ") {
-            XCTAssert($0?["a"]?.asString == "b")
+            try XCTAssert($0?["a"].asString == "b")
         }
 
         try parsed("    { \"a\":\"b\" }") {
-            XCTAssert($0?["a"]?.asString == "b")
+            try XCTAssert($0?["a"].asString == "b")
         }
 
         try parsed(" { \"a\"  :  \" b \"}}\"") {
-            XCTAssert($0?["a"]?.asString == " b ")
+            try XCTAssert($0?["a"].asString == " b ")
         }
 
         try parsed(" \"a\"") {
-            XCTAssert($0?.asString == "a")
+            try XCTAssert($0?.asString == "a")
         }
 
         try parsed(" \"a\" ") {
-            XCTAssert($0?.asString == "a")
+            try XCTAssert($0?.asString == "a")
         }
 
         try parsed("\"a\" ") {
-            XCTAssert($0?.asString == "a")
+            try XCTAssert($0?.asString == "a")
         }
 
         try parsed("\"a\"") {
-            XCTAssert($0?.asString == "a")
+            try XCTAssert($0?.asString == "a")
         }
     }
 
@@ -187,33 +225,27 @@ final class TypedJsonTests: XCTestCase {
             return
         }
 
-        XCTAssertEqual(object["type"]?.asString, "FeatureCollection")
+        try XCTAssertEqual(object["type"].asString, "FeatureCollection")
 
-        guard let features = object["features"]?.asArray else {
-            XCTFail()
-            return
-        }
+        let features = try object["features"].asArray
         XCTAssert(features.count == 10000)
-        guard
-            let lastFeature = features.last,
-            let properties = lastFeature["properties"]
+        guard let lastFeature = features.last else {
+            XCTFail()
+            return
+        }
+
+        let properties = try lastFeature["properties"]
+        try XCTAssertEqual(properties["BLKLOT"].asString, "0253A090")
+
+        guard let geometry = try? lastFeature["geometry"],
+              let coordinates = try? geometry["coordinates"],
+              let secondList = try coordinates[0].asArray.first
         else {
             XCTFail()
             return
         }
 
-        XCTAssertEqual(properties["BLKLOT"]?.asString, "0253A090")
-
-        guard let geometry = lastFeature["geometry"],
-              let coordinates = geometry["coordinates"],
-              let firstList = coordinates[0]?.asArray,
-              let secondList = firstList.first,
-              let number = secondList[0]?.asFloat
-        else {
-            XCTFail()
-            return
-        }
-
+        let number = try secondList[0].asFloat
         XCTAssert(number == -122.41356780832439)
     }
 
@@ -226,10 +258,7 @@ final class TypedJsonTests: XCTestCase {
             return
         }
 
-        if let timeString = object["time"]?.asString {
-            NSLog("The time is %@", timeString)
-        } else {
-            XCTFail("There is no spoon")
-        }
+        let timeString = try object["time"].asString
+        NSLog("The time is %@", timeString)
     }
 }
