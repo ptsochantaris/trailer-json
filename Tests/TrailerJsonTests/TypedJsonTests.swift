@@ -140,7 +140,7 @@ final class TypedJsonTests: XCTestCase {
             XCTAssert($0?[1]?.asInt == 5)
         }
 
-        try parsed(" [4,null ,5]") {
+        try parsed(" [  4,null ,5  ]") {
             XCTAssert($0?[0]?.asInt == 4)
             XCTAssert($0?[1]?.asInt == 5)
         }
@@ -155,6 +155,10 @@ final class TypedJsonTests: XCTestCase {
 
         try parsed("    { \"a\":\"b\" }") {
             XCTAssert($0?["a"]?.asString == "b")
+        }
+
+        try parsed(" { \"a\"  :  \" b \"}}\"") {
+            XCTAssert($0?["a"]?.asString == " b ")
         }
 
         try parsed(" \"a\"") {

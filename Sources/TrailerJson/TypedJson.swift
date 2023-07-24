@@ -1,121 +1,10 @@
 import Foundation
 
 public final class TypedJson {
-    public enum Entry {
-        case int(TypedJson, from: Int, to: Int),
-             float(TypedJson, from: Int, to: Int),
-             bool(TypedJson, from: Int, to: Int),
-             string(TypedJson, from: Int, to: Int),
-             object([String: Entry]),
-             array([Entry])
-
-        public var parsed: Any? {
-            switch self {
-            case let .int(buffer, from, to):
-                return buffer.slice(from, to).asInt
-            case let .float(buffer, from, to):
-                return buffer.slice(from, to).asFloat
-            case let .bool(buffer, from, _):
-                return buffer.byte(at: from) == ._charT
-            case let .string(buffer, from, to):
-                return buffer.slice(from, to).asUnescapedString
-            case let .array(list):
-                return list.compactMap(\.parsed)
-            case let .object(map):
-                let keys = map.keys
-                var dict = [String: Any](minimumCapacity: keys.count)
-                for key in keys {
-                    dict[key] = self[key]?.parsed
-                }
-                return dict
-            }
-        }
-
-        public var asInt: Int? {
-            switch self {
-            case let .int(buffer, from, to):
-                return buffer.slice(from, to).asInt
-            default:
-                return nil
-            }
-        }
-
-        public var asFloat: Float? {
-            switch self {
-            case let .float(buffer, from, to):
-                return buffer.slice(from, to).asFloat
-            default:
-                return nil
-            }
-        }
-
-        public var asBool: Bool? {
-            switch self {
-            case let .bool(buffer, from, _):
-                return buffer.byte(at: from) == ._charT
-            default:
-                return nil
-            }
-        }
-
-        public var asString: String? {
-            switch self {
-            case let .string(buffer, from, to):
-                return buffer.slice(from, to).asUnescapedString
-            default:
-                return nil
-            }
-        }
-
-        public subscript(named: String) -> Entry? {
-            switch self {
-            case let .object(fields):
-                return fields[named]
-            default:
-                return nil
-            }
-        }
-
-        public subscript(index: Int) -> Entry? {
-            switch self {
-            case let .array(items):
-                if index >= 0, index < items.count {
-                    return items[index]
-                }
-                return nil
-            default:
-                return nil
-            }
-        }
-
-        public var asArray: [Entry]? {
-            switch self {
-            case let .array(items):
-                return items
-            default:
-                return nil
-            }
-        }
-
-        public var keys: [String]? {
-            switch self {
-            case let .object(map):
-                return Array(map.keys)
-            default:
-                return nil
-            }
-        }
-    }
-
     private let array: UnsafeRawBufferPointer
     private let endIndex: Int
     private var readerIndex = 0
     private var needsDealloc: Bool
-
-    func parseRoot() throws -> Entry? {
-        try consumeWhitespace()
-        return try sliceValue()
-    }
 
     public init(bytes: UnsafeRawBufferPointer) {
         let mutable = UnsafeMutableRawBufferPointer.allocate(byteCount: bytes.count, alignment: 0)
@@ -160,8 +49,6 @@ public final class TypedJson {
                 return nil
             case ._minus, ._zero ... ._nine:
                 return sliceNumber()
-            case 0 ... 32: // whitespace
-                readerIndex += 1
             default:
                 throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
             }
@@ -338,11 +225,18 @@ public final class TypedJson {
         }
     }
 
-    private func byte(at index: Int) -> UInt8 {
+    @inline(__always)
+    func byte(at index: Int) -> UInt8 {
         array[index]
     }
 
-    private func slice(_ from: Int, _ to: Int) -> Slice<UnsafeRawBufferPointer> {
+    @inline(__always)
+    func slice(_ from: Int, _ to: Int) -> Slice<UnsafeRawBufferPointer> {
         array[from ..< to]
+    }
+
+    func parseRoot() throws -> Entry? {
+        try consumeWhitespace()
+        return try sliceValue()
     }
 }
