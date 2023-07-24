@@ -90,10 +90,10 @@ final class TypedJsonTests: XCTestCase {
         checkThrows(" ")
         checkThrows("   meh  ")
         checkThrows(" wut { \"a\":\"b\" }   meh  ")
-        
+
         let test = "[5, 5.5, \"a\",[1,2],{\"a\":\"b\"}]".data(using: .utf8)!
         let json = try! test.asTypedJson()!
-        
+
         func checkTypeError(shouldThrow: Bool, block: () throws -> Void) throws {
             do {
                 try block()
@@ -110,7 +110,7 @@ final class TypedJsonTests: XCTestCase {
                 }
             }
         }
-        
+
         for i in 0 ..< 4 {
             try checkTypeError(shouldThrow: i != 0) {
                 try _ = json[i].asInt

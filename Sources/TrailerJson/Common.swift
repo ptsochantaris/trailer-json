@@ -109,27 +109,27 @@ extension Slice<UnsafeRawBufferPointer> {
             var output: String?
             var readerIndex = startIndex
             let end = endIndex
-            
+
             guard readerIndex < end else {
                 return ""
             }
-            
+
             var segmentStartIndex = readerIndex
-            
+
             while readerIndex < end {
                 let byte = self[readerIndex]
-                
+
                 switch byte {
                 case 0 ... 31:
                     throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
-                    
+
                 case ._backslash:
                     if let existing = output {
                         output = existing + self[segmentStartIndex ..< readerIndex].asRawString
                     } else {
                         output = self[segmentStartIndex ..< readerIndex].asRawString
                     }
-                    
+
                     readerIndex += 1
                     let seq = parseEscapeSequence(at: readerIndex)
                     if let text = seq.1 {
@@ -141,12 +141,12 @@ extension Slice<UnsafeRawBufferPointer> {
                     }
                     readerIndex += seq.0
                     segmentStartIndex = readerIndex
-                    
+
                 default:
                     readerIndex += 1
                 }
             }
-            
+
             if let output {
                 return output + self[segmentStartIndex ..< readerIndex].asRawString
             } else {

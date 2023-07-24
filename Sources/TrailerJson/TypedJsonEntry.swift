@@ -8,10 +8,9 @@ public extension TypedJson {
              string(TypedJson, from: Int, to: Int),
              object([String: Entry]),
              array([Entry])
-        
+
         private var typeName: String {
             switch self {
-                
             case .int:
                 return "Int"
             case .float:
