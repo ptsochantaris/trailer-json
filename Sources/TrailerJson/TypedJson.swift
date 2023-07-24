@@ -1,11 +1,41 @@
 import Foundation
 
+/**
+Quickly scan the data blob and provide results of type ``Entry``, which provides typed access and parses that data only when accessed.
+ 
+This parser is much faster than `JSONSerialization`, and ideal if you are only accessing a subset of the JSON data. It also makes it possible to parallelise the subsequent parsing in threads if needed.
+ ```
+ let url = URL(string: "http://date.jsontest.com")!
+ let data = try await URLSession.shared.data(from: url).0
+
+ // Scan the data and only parse 'time' as a String
+ if let json = try data.asTypedJson(),         // scan data
+    let timeField = try? json["time"],
+    let timeString = try? timeField.asString { // parse field
+
+     print("The time is", timeString)
+ }
+ ```
+*/
 public final class TypedJson {
     private let array: UnsafeRawBufferPointer
     private let endIndex: Int
     private var readerIndex = 0
     private var needsDealloc: Bool
 
+    /**
+     Creates a `TypedJson` instance for parsing data.
+     - Parameter bytes: A pointer to the data to parse. This initialiser will make a copy of the data so the original can be discarded.
+     ```
+        let byteBuffer: ByteBuffer = ...
+        let jsonArray = try byteBuffer.withVeryUnsafeBytes {
+            try TypedJson.parse(bytes: $0)
+        }
+        let number = try jsonArray[1].asInt
+        print(number)
+     ```
+     */
+    
     public init(bytes: UnsafeRawBufferPointer) {
         let mutable = UnsafeMutableRawBufferPointer.allocate(byteCount: bytes.count, alignment: 0)
         mutable.copyBytes(from: bytes)
@@ -14,6 +44,25 @@ public final class TypedJson {
         needsDealloc = true
     }
 
+    /**
+     Creates a `TypedJson` instance for parsing data, without copying it in, for speed.
+     - Parameter bytesNoCopy: A pointer to the data to parse. This data *must* be retained until all parsed items have been used or the code will crash.
+     ```
+         // Using bytesNoCopy (max performance, but with caveats!)
+         let number = try byteBuffer.withVeryUnsafeBytes {
+
+             // jsonArray and any Entry from it must not be accessed outside the closure
+             let jsonArray = try TypedJson.parse(bytesNoCopy: $0)
+
+             // `secondEntry` reads from the original bytes, so it can't escape
+             let secondEntry = try jsonArray[1]
+
+             // but parsed values can escape
+             return try secondEntry.asInt
+         }
+         print(number)
+     ```
+     */
     public init(bytesNoCopy: UnsafeRawBufferPointer) {
         array = bytesNoCopy
         endIndex = bytesNoCopy.endIndex

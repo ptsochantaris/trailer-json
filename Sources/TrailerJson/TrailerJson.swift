@@ -2,6 +2,23 @@ import Foundation
 
 private typealias JSON = [String: Any]
 
+/**
+This parser processes the entire data blob in one go, producing a dictionary much like `JSONSerialization` does.
+ 
+It performs almost equivalently with `JSONSerialization` _BUT!_ the results are all native Swift types, so using those results incurs no bridging or copying costs, which is a major performance bonus.
+ ```
+     let url = URL(string: "http://date.jsontest.com")!
+     let data = try await URLSession.shared.data(from: url).0
+
+     // Parse in one go to [String: Any]
+     if let json = try data.asJsonObject(),      // parse as dictionary
+        let timeField = json["time"],
+        let timeString = timeField as? String {
+        
+         print("The time is", timeString)
+     }
+ ```
+*/
 public final class TrailerJson {
     private let array: UnsafeRawBufferPointer
     private let endIndex: Int
@@ -12,7 +29,18 @@ public final class TrailerJson {
         endIndex = bytes.endIndex
         try consumeWhitespace()
     }
+    /**
+    Performs the parsing of the provided data. Once the data is parsed, it can be discarded as everythig has been copied to the parsed items.
+    ```
+        let byteBuffer: ByteBuffer = ...
 
+        let jsonArray = try byteBuffer.withVeryUnsafeBytes {
+            try TrailerJson.parse(bytes: $0) as? [Any]
+        }
+        let number = jsonArray[1] as? Int
+        print(number)
+    ```
+    */
     public static func parse(bytes: UnsafeRawBufferPointer) throws -> Any? {
         try TrailerJson(bytes: bytes).parseValue()
     }

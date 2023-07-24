@@ -289,18 +289,26 @@ func hexAsciiTo4Bits(_ ascii: UInt8) -> UInt8? {
 }
 
 public extension Data {
+    /// Parse this data into a dictionary, array, or instance of Swift types.
+    /// - Returns: An object that represents the JSON in the data. This could be a single instance, an array, or a dictionary. It can also return `nil` if, for instance, the JSON is a single `null`
+    /// - Throws: If the data could not be parsed
     func asJson() throws -> Any? {
         try withUnsafeBytes { try TrailerJson.parse(bytes: $0) }
     }
-
+    
+    /// Convenience method, same as calling `try asJson() as? [String: Any]`
     func asJsonObject() throws -> [String: Any]? {
         try asJson() as? [String: Any]
     }
 
+    /// Convenience method, same as calling `try asJson() as? [[String: Any]]`
     func asJsonArray() throws -> [[String: Any]]? {
         try asJson() as? [[String: Any]]
     }
-
+    
+    /// Parse this data into a root entry which can be further queried.
+    /// - Returns: A ``TypedJson/Entry`` that represents the root of the data.
+    /// - Throws: If the data could not be scanned. Note that this only scans the outlines of the entry and its children. Accessing the individual entries can still potentially throw.
     func asTypedJson() throws -> TypedJson.Entry? {
         try withUnsafeBytes { try TypedJson(bytes: $0).parseRoot() }
     }
