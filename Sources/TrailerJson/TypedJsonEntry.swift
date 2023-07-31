@@ -1,7 +1,6 @@
 import Foundation
 
 public extension TypedJson {
-    
     /// A node object  that contains the scanned JSON elements at that level.
     enum Entry {
         /// This entry is delimiting an integer
@@ -53,20 +52,20 @@ public extension TypedJson {
         }
 
         /**
-         Returns a parsed version of this item, depending on the type that was parsed. Note that calling this on large object or array values can be slow.
-         - Throws: If the value could not be parsed by using its type-specific logic.
-        ```
-            let numberArray = try byteBuffer.withVeryUnsafeBytes {
+          Returns a parsed version of this item, depending on the type that was parsed. Note that calling this on large object or array values can be slow.
+          - Throws: If the value could not be parsed by using its type-specific logic.
+         ```
+             let numberArray = try byteBuffer.withVeryUnsafeBytes {
 
-                let numbers = try TypedJson.parse(bytes: $0)
-                
-                // very slow; for cases like these the `TrailerJson` parser is 10x faster!
-                return try numbers.parsed as! [Int]
-            }
-            let number = numberArray[1]
-            print(number)
-        ```
-        */
+                 let numbers = try TypedJson.parse(bytes: $0)
+
+                 // very slow; for cases like these the `TrailerJson` parser is 10x faster!
+                 return try numbers.parsed as! [Int]
+             }
+             let number = numberArray[1]
+             print(number)
+         ```
+         */
         public var parsed: Any {
             get throws {
                 switch self {

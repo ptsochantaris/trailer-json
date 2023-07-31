@@ -1,22 +1,22 @@
 import Foundation
 
 /**
-Quickly scan the data blob and provide results of type ``Entry``, which provides typed access and parses that data only when accessed.
- 
-This parser is much faster than `JSONSerialization`, and ideal if you are only accessing a subset of the JSON data. It also makes it possible to parallelise the subsequent parsing in threads if needed.
- ```
- let url = URL(string: "http://date.jsontest.com")!
- let data = try await URLSession.shared.data(from: url).0
+ Quickly scan the data blob and provide results of type ``Entry``, which provides typed access and parses that data only when accessed.
 
- // Scan the data and only parse 'time' as a String
- if let json = try data.asTypedJson(),         // scan data
-    let timeField = try? json["time"],
-    let timeString = try? timeField.asString { // parse field
+ This parser is much faster than `JSONSerialization`, and ideal if you are only accessing a subset of the JSON data. It also makes it possible to parallelise the subsequent parsing in threads if needed.
+  ```
+  let url = URL(string: "http://date.jsontest.com")!
+  let data = try await URLSession.shared.data(from: url).0
 
-     print("The time is", timeString)
- }
- ```
-*/
+  // Scan the data and only parse 'time' as a String
+  if let json = try data.asTypedJson(),         // scan data
+     let timeField = try? json["time"],
+     let timeString = try? timeField.asString { // parse field
+
+      print("The time is", timeString)
+  }
+  ```
+ */
 public final class TypedJson {
     private let array: UnsafeRawBufferPointer
     private let endIndex: Int
@@ -35,7 +35,7 @@ public final class TypedJson {
         print(number)
      ```
      */
-    
+
     public init(bytes: UnsafeRawBufferPointer) {
         let mutable = UnsafeMutableRawBufferPointer.allocate(byteCount: bytes.count, alignment: 0)
         mutable.copyBytes(from: bytes)

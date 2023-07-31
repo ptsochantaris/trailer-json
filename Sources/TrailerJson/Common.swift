@@ -295,7 +295,7 @@ public extension Data {
     func asJson() throws -> Any? {
         try withUnsafeBytes { try TrailerJson.parse(bytes: $0) }
     }
-    
+
     /// Convenience method, same as calling `try asJson() as? [String: Any]`
     func asJsonObject() throws -> [String: Any]? {
         try asJson() as? [String: Any]
@@ -305,7 +305,7 @@ public extension Data {
     func asJsonArray() throws -> [[String: Any]]? {
         try asJson() as? [[String: Any]]
     }
-    
+
     /// Parse this data into a root entry which can be further queried.
     /// - Returns: A ``TypedJson/Entry`` that represents the root of the data.
     /// - Throws: If the data could not be scanned. Note that this only scans the outlines of the entry and its children. Accessing the individual entries can still potentially throw.
