@@ -24,85 +24,85 @@ Because it heavily trades features for decode-only performance, and that it retu
 
 ### Examples
 ```
-        let url = URL(string: "http://date.jsontest.com")!
-        let data = try await URLSession.shared.data(from: url).0
+let url = URL(string: "http://date.jsontest.com")!
+let data = try await URLSession.shared.data(from: url).0
 ```
 
 ```
-        // TrailerJson - parse in one go to [String: Any]
-        if let json = try data.asJsonObject(),      // parse as dictionary
-           let timeField = json["time"],
-           let timeString = timeField as? String {
-           
-            print("The time is", timeString)
-        }
+// TrailerJson - parse in one go to [String: Any]
+if let json = try data.asJsonObject(),      // parse as dictionary
+   let timeField = json["time"],
+   let timeString = timeField as? String {
+   
+    print("The time is", timeString)
+}
 ```
 
 ```
-        // TypedJson - scan the data and only parse 'time' as a String
-        if let json = try data.asTypedJson(),         // scan data
-           let timeField = try? json["time"],
-           let timeString = try? timeField.asString { // parse field
-           
-            print("The time is", timeString)
-        }
+// TypedJson - scan the data and only parse 'time' as a String
+if let json = try data.asTypedJson(),         // scan data
+   let timeField = try? json["time"],
+   let timeString = try? timeField.asString { // parse field
+   
+    print("The time is", timeString)
+}
 ```
 
 TrailerJson works directly with raw bytes so it can accept data from any type that exposes a raw byte buffer, such as NIO's ByteBuffer, without expensive casting or copies in-between:
 
 ```
-        let byteBuffer: ByteBuffer = ...
+let byteBuffer: ByteBuffer = ...
 ```
 
 ```
-        // TrailerJson
-        let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
-            try TrailerJson.parse(bytes: $0) as? [Any]
-        }
-        let number = jsonArray[1] as? Int
-        print(number)
-```
-
-```        
-        // TypedJson
-        let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
-            try TypedJson.parse(bytes: $0)
-        }
-        let number = try jsonArray[1].asInt
-        print(number)
+// TrailerJson
+let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
+    try TrailerJson.parse(bytes: $0) as? [Any]
+}
+let number = jsonArray[1] as? Int
+print(number)
 ```
 
 ```        
-        // TypedJson - using bytesNoCopy, lazy parsing (max performance, but with caveats!)
-        let number = try byteBuffer.withVeryUnsafeBytes { 
+// TypedJson
+let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
+    try TypedJson.parse(bytes: $0)
+}
+let number = try jsonArray[1].asInt
+print(number)
+```
 
-            // jsonArray and any Entry from it must not be accessed outside the closure 
-            let jsonArray = try TypedJson.parse(bytesNoCopy: $0)
+```        
+// TypedJson - using bytesNoCopy, lazy parsing (max performance, but with caveats!)
+let number = try byteBuffer.withVeryUnsafeBytes { 
 
-            // `secondEntry` reads from the original bytes, so it can't escape 
-            let secondEntry = try jsonArray[1]
+    // jsonArray and any Entry from it must not be accessed outside the closure 
+    let jsonArray = try TypedJson.parse(bytesNoCopy: $0)
 
-            // but parsed values can escape
-            return try secondEntry.asInt
-        }
-        print(number)        
+    // `secondEntry` reads from the original bytes, so it can't escape 
+    let secondEntry = try jsonArray[1]
+
+    // but parsed values can escape
+    return try secondEntry.asInt
+}
+print(number)        
 ```
 
 If you need to pass a TypedJson entry into a method that needs an untyped dictionary, you can eagerly parse a chunk by using the `parse` method - but beware that this can be slow for large sets of data, so it is best used for very specific cases!
 
 ```
-        // TypedJson - eager parsing (slowest performance)
-        let numberArray = try byteBuffer.withVeryUnsafeBytes { 
+// TypedJson - eager parsing (slowest performance)
+let numberArray = try byteBuffer.withVeryUnsafeBytes { 
 
-            // numbers and any Entry from it must not be accessed outside the closure 
-            let numbers = try TypedJson.parse(bytes: $0)
+    // numbers and any Entry from it must not be accessed outside the closure 
+    let numbers = try TypedJson.parse(bytes: $0)
 
-            // but parsed value can escape - note that parsing the whole document would be 
-            // very slow, so for cases like these the `TrailerJson` parser is 10x faster!
-            return try numbers.parsed as! [Int]
-        }
-        let number = numberArray[1]
-        print(number)        
+    // but parsed value can escape - note that parsing the whole document would be 
+    // very slow, so for cases like these the `TrailerJson` parser is 10x faster!
+    return try numbers.parsed as! [Int]
+}
+let number = numberArray[1]
+print(number)        
 ```
 
 ### Notes
