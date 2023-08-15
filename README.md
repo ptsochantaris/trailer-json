@@ -1,3 +1,5 @@
+<img src="https://ptsochantaris.github.io/trailer/TrailerJsonLogo.webp" alt="Logo" width=256 align="right">
+
 # TrailerJson
 
 A feather-weight JSON decoder in Swift with no dependencies. Is is roughly based on a version of Swift.org's open source replacement for the Apple JSONSerialisation framework.
