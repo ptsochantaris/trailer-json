@@ -2,11 +2,11 @@
 
 A feather-weight JSON decoder in Swift with no dependencies. Is is roughly based on a version of Swift.org's open source replacement for the Apple JSONSerialisation framework.
 
-It is currently used in [Trailer](https://github.com/ptsochantaris/trailer) and [Trailer-CLI](https://github.com/ptsochantaris/trailer-cli) and has been heavily tested and used in production with GitHub JSON v3 and v4 API payloads.
-
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fptsochantaris%2Ftrailer-json%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/ptsochantaris/trailer-json) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fptsochantaris%2Ftrailer-json%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/ptsochantaris/trailer-json)
 
-Full docs [can be found here](https://swiftpackageindex.com/ptsochantaris/trailer-json/documentation)
+It is currently used in [Trailer](https://github.com/ptsochantaris/trailer) and [Trailer-CLI](https://github.com/ptsochantaris/trailer-cli) and has been heavily tested and used in production with GitHub JSON v3 and v4 API payloads.
+
+Detailed docs [can be found here](https://swiftpackageindex.com/ptsochantaris/trailer-json/documentation)
 
 ### The parsers
 There are two parsers in this package:
