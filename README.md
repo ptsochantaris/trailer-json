@@ -4,7 +4,10 @@ A feather-weight JSON decoder in Swift with no dependencies. Is is roughly based
 
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fptsochantaris%2Ftrailer-json%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/ptsochantaris/trailer-json) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fptsochantaris%2Ftrailer-json%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/ptsochantaris/trailer-json)
 
-It is currently used in [Trailer](https://github.com/ptsochantaris/trailer) and [Trailer-CLI](https://github.com/ptsochantaris/trailer-cli) and has been heavily tested and used in production with GitHub JSON v3 and v4 API payloads.
+Currently used in
+- [Trailer](https://github.com/ptsochantaris/trailer)
+- [Trailer-CLI](https://github.com/ptsochantaris/trailer-cli)
+- Heavily tested and used in production with GitHub JSON v3 and v4 API payloads.
 
 Detailed docs [can be found here](https://swiftpackageindex.com/ptsochantaris/trailer-json/documentation)
 
@@ -117,5 +120,5 @@ print(number)
 - Does not support exponent numbers, only integers and floats
 - Does little to error-correct if the JSON feed isn't to spec
 
-### License
+## License
 Copyright (c) 2023 Paul Tsochantaris. [Licensed under Apache License v2.0 with Runtime Library Exception](https://www.apache.org/licenses/LICENSE-2.0.html), as per the [open source material it is based on](https://github.com/apple/swift-corelibs-foundation/blob/bafd3d0f800397a15a3d092979ee7e788082feee/Sources/Foundation/JSONSerialization.swift)
