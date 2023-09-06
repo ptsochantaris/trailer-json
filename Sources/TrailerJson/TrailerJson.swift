@@ -410,22 +410,15 @@ public final class TrailerJson {
                     let stringValue = array[startIndex ..< readerIndex].asRawString
                     throw JSONError.numberIsNotRepresentableInSwift(parsed: stringValue)
                 case .operand:
-                    let numberIndex: Int
-                    var dec: Int
-                    if positive {
-                        numberIndex = startIndex
-                        dec = 1
-                    } else {
-                        numberIndex = startIndex + 1
-                        dec = -1
-                    }
-
-                    var index = readerIndex
                     var total = 0
-                    while index > numberIndex {
-                        index -= 1
-                        total += Int(array[index] - 48) * dec
-                        dec *= 10
+                    if positive {
+                        for index in startIndex ..< readerIndex {
+                            total = (total * 10) + Int(array[index] & 15)
+                        }
+                    } else {
+                        for index in startIndex + 1 ..< readerIndex {
+                            total = (total * 10) - Int(array[index] & 15)
+                        }
                     }
                     return total
                 }

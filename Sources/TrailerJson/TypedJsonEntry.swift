@@ -70,7 +70,7 @@ public extension TypedJson {
             get throws {
                 switch self {
                 case let .int(buffer, from, to):
-                    return try buffer.slice(from, to).asInt
+                    return buffer.slice(from, to).asInt
                 case let .float(buffer, from, to):
                     return try buffer.slice(from, to).asFloat
                 case let .bool(buffer, from, _):
@@ -90,7 +90,7 @@ public extension TypedJson {
         public var asInt: Int {
             get throws {
                 if case let .int(buffer, from, to) = self {
-                    return try buffer.slice(from, to).asInt
+                    return buffer.slice(from, to).asInt
                 }
                 throw JSONError.incorrectTypeRequested(requested: "Int", detected: typeName)
             }

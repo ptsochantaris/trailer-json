@@ -40,7 +40,7 @@ final class TrailerJsonTests: XCTestCase {
 
     func testFragmentParsing() throws {
         let data0 = "5".data(using: .utf8)!
-        XCTAssert(try data0.asJson() as? Int == 5)
+        XCTAssertEqual(try data0.asJson() as? Int, 5)
 
         let data10 = "  5".data(using: .utf8)!
         XCTAssert(try data10.asJson() as? Int == 5)
@@ -63,14 +63,14 @@ final class TrailerJsonTests: XCTestCase {
         let data23 = " null ".data(using: .utf8)!
         XCTAssert(try data23.asJson() == nil)
 
-        let data30 = "  [4,5]".data(using: .utf8)!
-        XCTAssert(try data30.asJson() as? [Int] == [4, 5])
+        let data30 = "  [4,1234]".data(using: .utf8)!
+        XCTAssertEqual(try data30.asJson() as? [Int], [4, 1234])
 
-        let data31 = "[4,5] ".data(using: .utf8)!
-        XCTAssert(try data31.asJson() as? [Int] == [4, 5])
+        let data31 = "[41,5] ".data(using: .utf8)!
+        XCTAssertEqual(try data31.asJson() as? [Int], [41, 5])
 
-        let data32 = "[4,null,5]".data(using: .utf8)!
-        XCTAssert(try data32.asJson() as? [Int] == [4, 5])
+        let data32 = "[-1234,null,5]".data(using: .utf8)!
+        XCTAssertEqual(try data32.asJson() as? [Int], [-1234, 5])
 
         let data40 = "{ \"a\":\"b\" }   meh  ".data(using: .utf8)!
         let value1 = try (data40.asJson() as? [String: Any])?["a"] as? String

@@ -253,12 +253,18 @@ extension Slice<UnsafeRawBufferPointer> {
     }
 
     var asInt: Int {
-        get throws {
-            let str = self[startIndex ..< endIndex].asRawString
-            if let value = Int(str) {
-                return value
+        get {
+            var total = 0
+            if self[startIndex] == ._minus {
+                for index in startIndex + 1 ..< endIndex {
+                    total = (total * 10) - Int(self[index] & 15)
+                }
+            } else {
+                for index in startIndex ..< endIndex {
+                    total = (total * 10) + Int(self[index] & 15)
+                }
             }
-            throw JSONError.numberIsNotRepresentableInSwift(parsed: str)
+            return total
         }
     }
 
