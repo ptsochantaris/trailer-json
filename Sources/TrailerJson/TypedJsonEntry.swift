@@ -176,8 +176,7 @@ public extension TypedJson {
             }
         }
 
-        /// Get an integer.
-        /// - Throws: If the parsed value is not this type.
+        /// Get an integer, ot `nil` if the entry could not be retrieved
         public var potentialInt: Int? {
             if case let .int(buffer, from, to) = self {
                 return buffer.slice(from, to).asInt
@@ -231,6 +230,86 @@ public extension TypedJson {
                 return items
             }
             return nil
+        }
+
+        // Faster and simpler than `potentialObject(named:)?.potentialInt`
+        public func potentialInt(named: String) -> Int? {
+            guard case let .object(fields) = self, let entry = fields[named], case let .int(buffer, from, to) = entry else {
+                return nil
+            }
+            return buffer.slice(from, to).asInt
+        }
+
+        // Faster and simpler than `potentialObject(named:)?.potentialFloat`
+        public func potentialFloat(named: String) -> Float? {
+            guard case let .object(fields) = self, let entry = fields[named], case let .float(buffer, from, to) = entry else {
+                return nil
+            }
+            return try? buffer.slice(from, to).asFloat
+        }
+
+        // Faster and simpler than `potentialObject(named:)?.potentialBool`
+        public func potentialBool(named: String) -> Bool? {
+            guard case let .object(fields) = self, let entry = fields[named], case let .bool(buffer, from, _) = entry else {
+                return nil
+            }
+            return buffer.byte(at: from) == ._charT
+        }
+
+        // Faster and simpler than `potentialObject(named:)?.potentialString`
+        public func potentialString(named: String) -> String? {
+            guard case let .object(fields) = self, let entry = fields[named], case let .string(buffer, from, to) = entry else {
+                return nil
+            }
+            return try? buffer.slice(from, to).asUnescapedString
+        }
+
+        // Faster and simpler than `potentialObject(named:)?.potentialArray`
+        public func potentialArray(named: String) -> [Entry]? {
+            guard case let .object(fields) = self, let entry = fields[named], case let .array(items) = entry else {
+                return nil
+            }
+            return items
+        }
+
+        // Faster and simpler than `potentialArray(named:)?.potentialInt`
+        public func potentialInt(at index: Int) -> Int? {
+            guard case let .array(items) = self, index >= 0, index < items.count, case let .int(buffer, from, to) = items[index] else {
+                return nil
+            }
+            return buffer.slice(from, to).asInt
+        }
+
+        // Faster and simpler than `potentialArray(named:)?.potentialFloat`
+        public func potentialFloat(at index: Int) -> Float? {
+            guard case let .array(items) = self, index >= 0, index < items.count, case let .float(buffer, from, to) = items[index] else {
+                return nil
+            }
+            return try? buffer.slice(from, to).asFloat
+        }
+
+        // Faster and simpler than `potentialArray(named:)?.potentialBool`
+        public func potentialBool(at index: Int) -> Bool? {
+            guard case let .array(items) = self, index >= 0, index < items.count, case let .bool(buffer, from, _) = items[index] else {
+                return nil
+            }
+            return buffer.byte(at: from) == ._charT
+        }
+
+        // Faster and simpler than `potentialArray(named:)?.potentialString`
+        public func potentialString(at index: Int) -> String? {
+            guard case let .array(items) = self, index >= 0, index < items.count, case let .string(buffer, from, to) = items[index] else {
+                return nil
+            }
+            return try? buffer.slice(from, to).asUnescapedString
+        }
+
+        // Faster and simpler than `potentialArray(named:)?.potentialArray`
+        public func potentialArray(at index: Int) -> [Entry]? {
+            guard case let .array(items) = self, index >= 0, index < items.count, case let .array(items) = items[index] else {
+                return nil
+            }
+            return items
         }
     }
 }

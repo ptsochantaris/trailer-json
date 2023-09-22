@@ -253,19 +253,17 @@ extension Slice<UnsafeRawBufferPointer> {
     }
 
     var asInt: Int {
-        get {
-            var total = 0
-            if self[startIndex] == ._minus {
-                for index in startIndex + 1 ..< endIndex {
-                    total = (total * 10) - Int(self[index] & 15)
-                }
-            } else {
-                for index in startIndex ..< endIndex {
-                    total = (total * 10) + Int(self[index] & 15)
-                }
+        var total = 0
+        if self[startIndex] == ._minus {
+            for index in startIndex + 1 ..< endIndex {
+                total = (total * 10) - Int(self[index] & 15)
             }
-            return total
+        } else {
+            for index in startIndex ..< endIndex {
+                total = (total * 10) + Int(self[index] & 15)
+            }
         }
+        return total
     }
 
     var asFloat: Float {

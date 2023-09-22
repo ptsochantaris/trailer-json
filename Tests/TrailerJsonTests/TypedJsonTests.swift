@@ -178,9 +178,12 @@ final class TypedJsonTests: XCTestCase {
             try XCTAssert($0?[1].asInt == 5)
         }
 
-        try parsed(" [  -1234,null ,5  ]") {
+        try parsed(" [  -1234,null ,5, [\"x\", {\"a\": [\"hi\", \"there\"]}]]") {
             try XCTAssert($0?[0].asInt == -1234)
             try XCTAssert($0?[1].asInt == 5)
+
+            XCTAssertEqual($0?.potentialInt(at: 1), 5)
+            XCTAssertEqual($0?.potentialArray(at: 2)?[1].potentialArray(named: "a")?.first?.potentialString, "hi")
 
             let obj = $0?.potentialObject(at: 1)
             XCTAssert(obj?.potentialInt == 5)
@@ -193,6 +196,10 @@ final class TypedJsonTests: XCTestCase {
 
         try parsed("{ \"a\":\"b\" }   meh  ") {
             try XCTAssert($0?["a"].asString == "b")
+            XCTAssert($0?.potentialString(named: "a") == "b")
+            XCTAssertNil($0?.potentialInt(named: "a"))
+            XCTAssertNil($0?.potentialString(named: "fnord"))
+            XCTAssertEqual($0?.potentialString(named: "a"), "b")
         }
 
         try parsed("    { \"a\":\"b\" }   meh  ") {
