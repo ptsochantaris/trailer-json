@@ -175,5 +175,62 @@ public extension TypedJson {
                 throw JSONError.incorrectTypeRequested(requested: "Object", detected: typeName)
             }
         }
+
+        /// Get an integer.
+        /// - Throws: If the parsed value is not this type.
+        public var potentialInt: Int? {
+            if case let .int(buffer, from, to) = self {
+                return buffer.slice(from, to).asInt
+            }
+            return nil
+        }
+
+        /// Get a float, or `nil` if the entry could not be retrieved.
+        public var potentialFloat: Float? {
+            if case let .float(buffer, from, to) = self {
+                return try? buffer.slice(from, to).asFloat
+            }
+            return nil
+        }
+
+        /// Get a bool, or `nil` if the entry could not be retrieved.
+        public var potentialBool: Bool? {
+            if case let .bool(buffer, from, _) = self {
+                return buffer.byte(at: from) == ._charT
+            }
+            return nil
+        }
+
+        /// Get a string, or `nil` if the entry could not be retrieved.
+        public var potentialString: String? {
+            if case let .string(buffer, from, to) = self {
+                return try? buffer.slice(from, to).asUnescapedString
+            }
+            return nil
+        }
+
+        /// Get an entry for a field, or `nil` if the entry could not be retrieved.
+        public func potentialObject(named: String) -> Entry? {
+            if case let .object(fields) = self, let entry = fields[named] {
+                return entry
+            }
+            return nil
+        }
+
+        /// Get an entry at an array index, or `nil` if the entry could not be retrieved.
+        public func potentialObject(at index: Int) -> Entry? {
+            if case let .array(items) = self, index >= 0, index < items.count {
+                return items[index]
+            }
+            return nil
+        }
+
+        /// Get an array of entries, or `nil` if the entry could not be retrieved.
+        public var potentialArray: [Entry]? {
+            if case let .array(items) = self {
+                return items
+            }
+            return nil
+        }
     }
 }

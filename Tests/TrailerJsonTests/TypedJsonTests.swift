@@ -181,6 +181,14 @@ final class TypedJsonTests: XCTestCase {
         try parsed(" [  -1234,null ,5  ]") {
             try XCTAssert($0?[0].asInt == -1234)
             try XCTAssert($0?[1].asInt == 5)
+
+            let obj = $0?.potentialObject(at: 1)
+            XCTAssert(obj?.potentialInt == 5)
+            XCTAssertNil(obj?.potentialBool)
+            XCTAssertNil(obj?.potentialArray)
+            XCTAssertNil(obj?.potentialObject(at: 1))
+            XCTAssertNil(obj?.potentialObject(named: "fnord"))
+            XCTAssertNil(obj?.potentialFloat)
         }
 
         try parsed("{ \"a\":\"b\" }   meh  ") {

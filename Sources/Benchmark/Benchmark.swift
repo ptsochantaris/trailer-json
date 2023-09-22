@@ -20,8 +20,6 @@ enum Benchmark {
         print("Test data size:", jsonData.count, "bytes")
 
         try trailerJson()
-        print()
-        print()
         try typedJson()
     }
 
