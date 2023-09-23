@@ -91,7 +91,7 @@ public final class TrailerJson {
         }
 
         var array = [Any]()
-        array.reserveCapacity(10)
+        array.reserveCapacity(6)
 
         // parse values
         while true {
@@ -132,7 +132,7 @@ public final class TrailerJson {
             return [:]
         }
 
-        var object = JSON(minimumCapacity: 20)
+        var object = JSON(minimumCapacity: 8)
 
         while true {
             readerIndex += 1 // quote

@@ -20,8 +20,8 @@ import Foundation
 public final class TypedJson {
     private let array: UnsafeRawBufferPointer
     private let endIndex: Int
+    private let needsDealloc: Bool
     private var readerIndex = 0
-    private var needsDealloc: Bool
 
     /**
      Creates a `TypedJson` instance for parsing data.
@@ -117,7 +117,7 @@ public final class TypedJson {
         }
 
         var array = [Entry]()
-        array.reserveCapacity(10)
+        array.reserveCapacity(6)
 
         while true {
             if let value = try sliceValue() {
@@ -155,7 +155,7 @@ public final class TypedJson {
             return nil
         }
 
-        var map = [String: Entry](minimumCapacity: 20)
+        var map = [String: Entry](minimumCapacity: 8)
 
         while true {
             readerIndex += 1 // quote

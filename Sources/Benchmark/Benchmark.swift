@@ -3,12 +3,15 @@ import TrailerJson
 
 @main
 enum Benchmark {
-    private static func show(diff: TimeInterval, label: String) {
-        let ms = diff * 1000
+    private static func show(diffs: (avg: TimeInterval, objc: TimeInterval, swift: TimeInterval), label: String) {
+        print("* \(label)")
+        print("  Totals: JSONSerialization: \(diffs.objc * 1000), \(label): \(diffs.swift * 1000)")
+
+        let ms = diffs.avg * 1000
         if ms < 0 {
-            print("JSONSerialization wins by \(-ms) ms")
+            print("  JSONSerialization wins by \(-ms) ms")
         } else {
-            print("\(label) wins by \(ms) ms")
+            print("  \(label) wins by \(ms) ms")
         }
     }
 
@@ -19,14 +22,24 @@ enum Benchmark {
 
         print("Test data size:", jsonData.count, "bytes")
 
+        print()
         try trailerJson()
+        print()
         try typedJson()
+        print()
     }
 
     private static func typedJson() throws {
         let loops = 50
+
         var times = [TimeInterval]()
         times.reserveCapacity(loops)
+
+        var swiftTimes = [TimeInterval]()
+        swiftTimes.reserveCapacity(loops)
+
+        var objCTimes = [TimeInterval]()
+        objCTimes.reserveCapacity(loops)
 
         for _ in 0 ..< loops {
             let start = Date()
@@ -37,25 +50,31 @@ enum Benchmark {
             let object2 = try jsonData.asTypedJson()
             let swiftTime = -start2.timeIntervalSinceNow
 
-            let diff = objCTime - swiftTime
-            // show(diff: diff, label: "TypedJson")
-            times.append(diff)
+            times.append(objCTime - swiftTime)
+            swiftTimes.append(swiftTime)
+            objCTimes.append(objCTime)
 
             withExtendedLifetime(object) {}
             withExtendedLifetime(object2) {}
         }
 
-        print()
-        print("Concluded; on average ", terminator: "")
-
         let averageDiff = times.reduce(0, +) / CGFloat(loops)
-        show(diff: averageDiff, label: "TypedJson")
+        let averageObjcDiff = objCTimes.reduce(0, +) / CGFloat(loops)
+        let averageSwiftDiff = swiftTimes.reduce(0, +) / CGFloat(loops)
+        show(diffs: (averageDiff, averageObjcDiff, averageSwiftDiff), label: "TypedJson")
     }
 
     private static func trailerJson() throws {
         let loops = 50
+
         var times = [TimeInterval]()
         times.reserveCapacity(loops)
+
+        var swiftTimes = [TimeInterval]()
+        swiftTimes.reserveCapacity(loops)
+
+        var objCTimes = [TimeInterval]()
+        objCTimes.reserveCapacity(loops)
 
         for _ in 0 ..< loops {
             let start = Date()
@@ -66,18 +85,17 @@ enum Benchmark {
             let object2 = try jsonData.asJsonObject()
             let swiftTime = -start2.timeIntervalSinceNow
 
-            let diff = objCTime - swiftTime
-            // show(diff: diff, label: "TrailerJson")
-            times.append(diff)
+            times.append(objCTime - swiftTime)
+            swiftTimes.append(swiftTime)
+            objCTimes.append(objCTime)
 
             withExtendedLifetime(object) {}
             withExtendedLifetime(object2) {}
         }
 
-        print()
-        print("Concluded; on average ", terminator: "")
-
         let averageDiff = times.reduce(0, +) / CGFloat(loops)
-        show(diff: averageDiff, label: "TrailerJson")
+        let averageObjcDiff = objCTimes.reduce(0, +) / CGFloat(loops)
+        let averageSwiftDiff = swiftTimes.reduce(0, +) / CGFloat(loops)
+        show(diffs: (averageDiff, averageObjcDiff, averageSwiftDiff), label: "TrailerJson")
     }
 }
