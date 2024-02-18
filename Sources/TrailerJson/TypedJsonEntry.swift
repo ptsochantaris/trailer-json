@@ -52,14 +52,13 @@ public extension TypedJson {
         }
 
         /**
-          Returns a parsed version of this item, depending on the type that was parsed. Note that calling this on large object or array values can be slow.
+          Returns a parsed version of this item, depending on the type that was parsed. Note that calling this to convert an entire large tree to a dictionary is slower than using TrailerJson in the first place. This method's usefulness lies in parsing things like large homogenous arrays of objects in parallel, or parsing only a small branch from a large tree without parsing the rest, etc.
           - Throws: If the value could not be parsed by using its type-specific logic.
          ```
              let numberArray = try byteBuffer.withVeryUnsafeBytes {
 
                  let numbers = try TypedJson.parse(bytes: $0)
 
-                 // very slow; for cases like these the `TrailerJson` parser is 10x faster!
                  return try numbers.parsed as! [Int]
              }
              let number = numberArray[1]
