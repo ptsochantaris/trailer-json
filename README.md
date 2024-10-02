@@ -38,7 +38,7 @@ let data = try await URLSession.shared.data(from: url).0
 ```
 
 ```
-// TrailerJson - parse in one go to [String: Any]
+// TrailerJson - parse in one go to [String: Sendable]
 if let json = try data.asJsonObject(),      // parse as dictionary
    let timeField = json["time"],
    let timeString = timeField as? String {
@@ -66,7 +66,7 @@ let byteBuffer: ByteBuffer = ...
 ```
 // TrailerJson
 let jsonArray = try byteBuffer.withVeryUnsafeBytes { 
-    try TrailerJson.parse(bytes: $0) as? [Any]
+    try TrailerJson.parse(bytes: $0) as? [Sendable]
 }
 let number = jsonArray[1] as? Int
 print(number)

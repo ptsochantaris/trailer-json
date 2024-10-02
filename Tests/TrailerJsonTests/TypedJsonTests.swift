@@ -13,7 +13,7 @@ final class TypedJsonTests: XCTestCase {
         let v7: Float = 123.6
         let v8 = -60
 
-        let testDictionary: [String: Any] = [
+        let testDictionary: [String: Sendable] = [
             "key1": v1,
             "😛": v2,
             "key3": v3,
@@ -31,7 +31,7 @@ final class TypedJsonTests: XCTestCase {
                 "1": 1,
                 "2": ["x": "y"],
                 "3": 3
-            ] as [String: Any]
+            ] as [String: Sendable]
         ]
 
         let data = try JSONSerialization.data(withJSONObject: testDictionary)
@@ -50,7 +50,7 @@ final class TypedJsonTests: XCTestCase {
         try XCTAssertEqual(entry["key7"].asFloat, v7)
         try XCTAssertEqual(entry["key8"].asInt, v8)
 
-        if let reconstructed = try entry.parsed as? [String: Any] {
+        if let reconstructed = try entry.parsed as? [String: Sendable] {
             XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
         } else {
             XCTFail()
@@ -58,7 +58,7 @@ final class TypedJsonTests: XCTestCase {
     }
 
     func testEmptyStringValue() throws {
-        let testDictionary: [String: Any] = ["body": ""]
+        let testDictionary: [String: Sendable] = ["body": ""]
 
         let data = try JSONSerialization.data(withJSONObject: testDictionary)
 
@@ -69,7 +69,7 @@ final class TypedJsonTests: XCTestCase {
 
         try XCTAssertEqual(entry["body"].asString, "")
 
-        if let reconstructed = try entry.parsed as? [String: Any] {
+        if let reconstructed = try entry.parsed as? [String: Sendable] {
             XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
         } else {
             XCTFail()

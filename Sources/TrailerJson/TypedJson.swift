@@ -17,11 +17,11 @@ import Foundation
   }
   ```
  */
-public final class TypedJson {
-    private let array: UnsafeRawBufferPointer
+public final class TypedJson: Sendable {
+    private nonisolated(unsafe) let array: UnsafeRawBufferPointer
     private let endIndex: Int
     private let needsDealloc: Bool
-    private var readerIndex = 0
+    private nonisolated(unsafe) var readerIndex = 0
 
     /**
      Creates a `TypedJson` instance for parsing data.

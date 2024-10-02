@@ -2,7 +2,7 @@ import Foundation
 
 public extension TypedJson {
     /// A node object  that contains the scanned JSON elements at that level.
-    enum Entry {
+    enum Entry: Sendable {
         /// This entry is delimiting an integer
         case int(TypedJson, from: Int, to: Int)
         /// This entry is delimiting a float
@@ -19,35 +19,35 @@ public extension TypedJson {
         private var typeName: String {
             switch self {
             case .int:
-                return "Int"
+                "Int"
             case .float:
-                return "Float"
+                "Float"
             case .bool:
-                return "Bool"
+                "Bool"
             case .string:
-                return "String"
+                "String"
             case .object:
-                return "Object"
+                "Object"
             case .array:
-                return "Array"
+                "Array"
             }
         }
 
         /// The type that the parsed value is expected to be
-        var type: Any.Type {
+        var type: Sendable.Type {
             switch self {
             case .int:
-                return Int.self
+                Int.self
             case .float:
-                return Float.self
+                Float.self
             case .bool:
-                return Bool.self
+                Bool.self
             case .string:
-                return String.self
+                String.self
             case .object:
-                return [String: Any].self
+                [String: Sendable].self
             case .array:
-                return [Any].self
+                [Sendable].self
             }
         }
 
@@ -65,21 +65,21 @@ public extension TypedJson {
              print(number)
          ```
          */
-        public var parsed: Any {
+        public var parsed: Sendable {
             get throws {
                 switch self {
                 case let .int(buffer, from, to):
-                    return buffer.slice(from, to).asInt
+                    buffer.slice(from, to).asInt
                 case let .float(buffer, from, to):
-                    return try buffer.slice(from, to).asFloat
+                    try buffer.slice(from, to).asFloat
                 case let .bool(buffer, from, _):
-                    return buffer.byte(at: from) == ._charT
+                    buffer.byte(at: from) == ._charT
                 case let .string(buffer, from, to):
-                    return try buffer.slice(from, to).asUnescapedString
+                    try buffer.slice(from, to).asUnescapedString
                 case let .array(list):
-                    return try list.map { try $0.parsed }
+                    try list.map { try $0.parsed }
                 case let .object(fields):
-                    return try fields.mapValues { try $0.parsed }
+                    try fields.mapValues { try $0.parsed }
                 }
             }
         }

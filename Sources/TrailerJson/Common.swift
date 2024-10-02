@@ -61,30 +61,30 @@ enum JSONError: Error {
         case let .faultyEscapeSequence(error, text):
             switch error {
             case .couldNotCreateUnicodeScalarFromUInt32:
-                return "Unable to convert hex escape sequence (no high character) to UTF8-encoded character. Text: \(text)"
+                "Unable to convert hex escape sequence (no high character) to UTF8-encoded character. Text: \(text)"
             case .expectedLowSurrogateUTF8SequenceAfterHighSurrogate:
-                return "Unexpected end of file during string parse (expected low-surrogate code point but did not find one). Text: \(text)"
+                "Unexpected end of file during string parse (expected low-surrogate code point but did not find one). Text: \(text)"
             case .unexpectedEscapedCharacter:
-                return "Invalid escape sequence. Text: \(text)"
+                "Invalid escape sequence. Text: \(text)"
             }
         case let .incorrectTypeRequested(requested, detected):
-            return "Type requested ('\(requested)') did not match the type detected by the parser for this value ('\(detected)')."
+            "Type requested ('\(requested)') did not match the type detected by the parser for this value ('\(detected)')."
         case let .fieldNotFound(field):
-            return "Field '\(field)' not found in this object."
+            "Field '\(field)' not found in this object."
         case .unexpectedEndOfFile:
-            return "Unexpected end of file during JSON parse."
+            "Unexpected end of file during JSON parse."
         case let .unexpectedCharacter(_, characterIndex):
-            return "Invalid value around character \(characterIndex)."
+            "Invalid value around character \(characterIndex)."
         case let .invalidHexDigitSequence(string, index: index):
-            return #"Invalid hex encoded sequence in "\#(string)" at \#(index)."#
+            #"Invalid hex encoded sequence in "\#(string)" at \#(index)."#
         case .unescapedControlCharacterInString(ascii: let ascii, in: _, index: let index) where ascii == UInt8._backslash:
-            return #"Invalid escape sequence around character \#(index)."#
+            #"Invalid escape sequence around character \#(index)."#
         case .unescapedControlCharacterInString(ascii: _, in: _, index: let index):
-            return #"Unescaped control character around character \#(index)."#
+            #"Unescaped control character around character \#(index)."#
         case let .numberIsNotRepresentableInSwift(parsed: parsed):
-            return #"Number \#(parsed) is not representable in Swift."#
+            #"Number \#(parsed) is not representable in Swift."#
         case let .invalidUTF8Sequence(data, characterIndex: index):
-            return #"Invalid UTF-8 sequence \#(data) starting from character \#(index)."#
+            #"Invalid UTF-8 sequence \#(data) starting from character \#(index)."#
         }
     }
 }
@@ -280,15 +280,15 @@ extension Slice<UnsafeRawBufferPointer> {
 func hexAsciiTo4Bits(_ ascii: UInt8) -> UInt8? {
     switch ascii {
     case 48 ... 57:
-        return ascii - 48
+        ascii - 48
     case 65 ... 70:
         // uppercase letters
-        return ascii - 55
+        ascii - 55
     case 97 ... 102:
         // lowercase letters
-        return ascii - 87
+        ascii - 87
     default:
-        return nil
+        nil
     }
 }
 
@@ -296,18 +296,18 @@ public extension Data {
     /// Parse this data into a dictionary, array, or instance of Swift types.
     /// - Returns: An object that represents the JSON in the data. This could be a single instance, an array, or a dictionary. It can also return `nil` if, for instance, the JSON is a single `null`
     /// - Throws: If the data could not be parsed
-    func asJson() throws -> Any? {
+    func asJson() throws -> Sendable? {
         try withUnsafeBytes { try TrailerJson.parse(bytes: $0) }
     }
 
-    /// Convenience method, same as calling `try asJson() as? [String: Any]`
-    func asJsonObject() throws -> [String: Any]? {
-        try asJson() as? [String: Any]
+    /// Convenience method, same as calling `try asJson() as? [String: Sendable]`
+    func asJsonObject() throws -> [String: Sendable]? {
+        try asJson() as? [String: Sendable]
     }
 
-    /// Convenience method, same as calling `try asJson() as? [[String: Any]]`
-    func asJsonArray() throws -> [[String: Any]]? {
-        try asJson() as? [[String: Any]]
+    /// Convenience method, same as calling `try asJson() as? [[String: Sendable]]`
+    func asJsonArray() throws -> [[String: Sendable]]? {
+        try asJson() as? [[String: Sendable]]
     }
 
     /// Parse this data into a root entry which can be further queried.

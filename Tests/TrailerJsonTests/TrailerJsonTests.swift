@@ -73,15 +73,15 @@ final class TrailerJsonTests: XCTestCase {
         XCTAssertEqual(try data32.asJson() as? [Int], [-1234, 5])
 
         let data40 = "{ \"a\":\"b\" }   meh  ".data(using: .utf8)!
-        let value1 = try (data40.asJson() as? [String: Any])?["a"] as? String
+        let value1 = try (data40.asJson() as? [String: Sendable])?["a"] as? String
         XCTAssert(value1 == "b")
 
         let data41 = "     { \"a\":\"b\" }".data(using: .utf8)!
-        let value2 = try (data41.asJson() as? [String: Any])?["a"] as? String
+        let value2 = try (data41.asJson() as? [String: Sendable])?["a"] as? String
         XCTAssert(value2 == "b")
 
         let data42 = "     { \"a\":\"b\" }   meh  ".data(using: .utf8)!
-        let value3 = try (data42.asJson() as? [String: Any])?["a"] as? String
+        let value3 = try (data42.asJson() as? [String: Sendable])?["a"] as? String
         XCTAssert(value3 == "b")
 
         let data50 = "  \"a\"".data(using: .utf8)!
@@ -98,7 +98,7 @@ final class TrailerJsonTests: XCTestCase {
         let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
         let object = try jsonData.withUnsafeBytes {
-            try TrailerJson.parse(bytes: $0) as? [String: Any]
+            try TrailerJson.parse(bytes: $0) as? [String: Sendable]
         }
         guard let object else {
             XCTFail()
@@ -107,7 +107,7 @@ final class TrailerJsonTests: XCTestCase {
 
         XCTAssert(object["type"] as? String == "FeatureCollection")
 
-        let features = object["features"] as? [[String: Any]]
+        let features = object["features"] as? [[String: Sendable]]
         guard let features else {
             XCTFail()
             return
@@ -115,7 +115,7 @@ final class TrailerJsonTests: XCTestCase {
         XCTAssert(features.count == 10000)
         guard
             let lastFeature = features.last,
-            let properties = lastFeature["properties"] as? [String: Any]
+            let properties = lastFeature["properties"] as? [String: Sendable]
         else {
             XCTFail()
             return
@@ -123,10 +123,10 @@ final class TrailerJsonTests: XCTestCase {
 
         XCTAssert(properties["BLKLOT"] as? String == "0253A090")
 
-        guard let geometry = lastFeature["geometry"] as? [String: Any],
-              let coordinates = geometry["coordinates"] as? [Any],
-              let firstList = coordinates.first as? [Any],
-              let secondList = firstList.first as? [Any],
+        guard let geometry = lastFeature["geometry"] as? [String: Sendable],
+              let coordinates = geometry["coordinates"] as? [Sendable],
+              let firstList = coordinates.first as? [Sendable],
+              let secondList = firstList.first as? [Sendable],
               let number = secondList.first as? Float
         else {
             XCTFail()

@@ -1,6 +1,6 @@
 import Foundation
 
-private typealias JSON = [String: Any]
+private typealias JSON = [String: Sendable]
 
 /**
  This parser processes the entire data blob in one go, producing a dictionary much like `JSONSerialization` does.
@@ -10,7 +10,7 @@ private typealias JSON = [String: Any]
       let url = URL(string: "http://date.jsontest.com")!
       let data = try await URLSession.shared.data(from: url).0
 
-      // Parse in one go to [String: Any]
+      // Parse in one go to [String: Sendable]
       if let json = try data.asJsonObject(),      // parse as dictionary
          let timeField = json["time"],
          let timeString = timeField as? String {
@@ -19,10 +19,10 @@ private typealias JSON = [String: Any]
       }
   ```
  */
-public final class TrailerJson {
-    private let array: UnsafeRawBufferPointer
+public final class TrailerJson: Sendable {
+    private nonisolated(unsafe) let array: UnsafeRawBufferPointer
     private let endIndex: Int
-    private var readerIndex = 0
+    private nonisolated(unsafe) var readerIndex = 0
 
     private init(bytes: UnsafeRawBufferPointer) throws {
         array = bytes
@@ -36,19 +36,19 @@ public final class TrailerJson {
          let byteBuffer: ByteBuffer = ...
 
          let jsonArray = try byteBuffer.withVeryUnsafeBytes {
-             try TrailerJson.parse(bytes: $0) as? [Any]
+             try TrailerJson.parse(bytes: $0) as? [Sendable]
          }
          let number = jsonArray[1] as? Int
          print(number)
      ```
      */
-    public static func parse(bytes: UnsafeRawBufferPointer) throws -> Any? {
+    public static func parse(bytes: UnsafeRawBufferPointer) throws -> Sendable? {
         try TrailerJson(bytes: bytes).parseValue()
     }
 
     // MARK: Generic Value Parsing
 
-    private func parseValue() throws -> Any? {
+    private func parseValue() throws -> Sendable? {
         while let byte = read() {
             switch byte {
             case ._quote:
@@ -82,7 +82,7 @@ public final class TrailerJson {
 
     // MARK: - Parse Array -
 
-    private func parseArray() throws -> [Any] {
+    private func parseArray() throws -> [Sendable] {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebracket {
             // if the first char after whitespace is a closing bracket, we found an empty array
@@ -90,7 +90,7 @@ public final class TrailerJson {
             return []
         }
 
-        var array = [Any]()
+        var array = [Sendable]()
         array.reserveCapacity(6)
 
         // parse values
@@ -221,11 +221,10 @@ public final class TrailerJson {
                 // quotation marks, except for the characters that must be escaped:
                 // quotation mark, reverse solidus, and the control characters (U+0000
                 // through U+001F).
-                let string: String
-                if let output {
-                    string = output + array[stringStartIndex ... currentCharIndex].asRawString
+                let string: String = if let output {
+                    output + array[stringStartIndex ... currentCharIndex].asRawString
                 } else {
-                    string = array[stringStartIndex ... currentCharIndex].asRawString
+                    array[stringStartIndex ... currentCharIndex].asRawString
                 }
                 throw JSONError.unescapedControlCharacterInString(ascii: byte, in: string, index: currentCharIndex)
 
@@ -352,7 +351,7 @@ public final class TrailerJson {
 
     // MARK: Numbers
 
-    private func parseNumber(positive: Bool) throws -> Any {
+    private func parseNumber(positive: Bool) throws -> Sendable {
         let startIndex = readerIndex - 1
 
         var pastControlChar: ControlCharacter = .operand
