@@ -72,11 +72,11 @@ enum Benchmark {
         let averageDiff = times.reduce(0, +) / CGFloat(loops)
         let averageObjcDiff = objCTimes.reduce(0, +) / CGFloat(loops)
         let averageSwiftDiff = swiftTimes.reduce(0, +) / CGFloat(loops)
-        show(diffs: (averageDiff, averageObjcDiff, averageSwiftDiff), label: "TypedJson Scan")
+        show(diffs: (averageDiff, averageObjcDiff, averageSwiftDiff), label: "TypedJson Scan (Best Case)")
 
         let averageDiffWithConversion = timesWithConversion.reduce(0, +) / CGFloat(loops)
         let averageSwiftDiffWithConversion = swiftTimesWithConversion.reduce(0, +) / CGFloat(loops)
-        show(diffs: (averageDiffWithConversion, averageObjcDiff, averageSwiftDiffWithConversion), label: "TypedJson Parse Whole Tree (Worst Case)")
+        show(diffs: (averageDiffWithConversion, averageObjcDiff, averageSwiftDiffWithConversion), label: "TypedJson Scan & Parse Entire Tree (Worst Case)")
     }
 
     private static func trailerJson() throws {
