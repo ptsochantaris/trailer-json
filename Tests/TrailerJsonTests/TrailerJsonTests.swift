@@ -34,6 +34,8 @@ final class TrailerJsonTests: XCTestCase {
 
         checkThrows(nil)
         checkThrows(" ")
+        checkThrows(" 5a ")
+        checkThrows(" a ")
         checkThrows("   meh  ")
         checkThrows(" wut { \"a\":\"b\" }   meh  ")
     }

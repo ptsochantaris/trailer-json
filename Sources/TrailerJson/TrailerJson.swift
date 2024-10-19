@@ -49,7 +49,10 @@ public final class TrailerJson: Sendable {
     // MARK: Generic Value Parsing
 
     private func parseValue() throws(JSONError) -> Sendable? {
-        while let byte = read() {
+        while readerIndex < endIndex {
+            let byte = array[readerIndex]
+            readerIndex += 1
+
             switch byte {
             case ._quote:
                 return try readString()
@@ -164,19 +167,6 @@ public final class TrailerJson: Sendable {
         }
     }
 
-    // document reading
-
-    private func read() -> UInt8? {
-        guard readerIndex < endIndex else {
-            readerIndex = endIndex
-            return nil
-        }
-        defer {
-            readerIndex += 1
-        }
-        return array[readerIndex]
-    }
-
     @discardableResult
     private func consumeWhitespace() throws(JSONError) -> UInt8 {
         while readerIndex < endIndex {
@@ -196,7 +186,10 @@ public final class TrailerJson: Sendable {
         var stringStartIndex = readerIndex
         var output: String?
 
-        while let byte = read() {
+        while readerIndex < endIndex {
+            let byte = array[readerIndex]
+            readerIndex += 1
+
             switch byte {
             case ._quote:
                 let currentCharIndex = readerIndex - 1
@@ -243,9 +236,12 @@ public final class TrailerJson: Sendable {
     }
 
     private func parseEscapeSequence() throws(JSONError) -> String {
-        guard let ascii = read() else {
+        guard readerIndex < endIndex else {
             throw .unexpectedEndOfFile
         }
+
+        let ascii = array[readerIndex]
+        readerIndex += 1
 
         switch ascii {
         case 0x22: return "\""
@@ -273,11 +269,13 @@ public final class TrailerJson: Sendable {
         if isFirstByteHighSurrogate == 0xD800 {
             // if we have a high surrogate we expect a low surrogate next
             let highSurrogateBitPattern = bitPattern
-            guard let escapeChar = read(),
-                  let uChar = read()
-            else {
+            let index = readerIndex
+            guard index < endIndex - 2 else {
                 throw .unexpectedEndOfFile
             }
+            let escapeChar = array[index]
+            let uChar = array[index + 1]
+            readerIndex = index + 2
 
             guard escapeChar == UInt8(ascii: #"\"#), uChar == UInt8(ascii: "u") else {
                 let error = EscapedSequenceError.expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: readerIndex - 1)
@@ -314,29 +312,30 @@ public final class TrailerJson: Sendable {
     private func parseUnicodeHexSequence() throws(JSONError) -> UInt16 {
         // As stated in RFC-8259 an escaped unicode character is 4 HEXDIGITs long
         // https://tools.ietf.org/html/rfc8259#section-7
-        let startIndex = readerIndex
-        guard let firstHex = read(),
-              let secondHex = read(),
-              let thirdHex = read(),
-              let forthHex = read()
-        else {
+
+        guard readerIndex < endIndex - 4 else {
             throw .unexpectedEndOfFile
         }
 
-        guard let first = hexAsciiTo4Bits(firstHex),
-              let second = hexAsciiTo4Bits(secondHex),
-              let third = hexAsciiTo4Bits(thirdHex),
-              let forth = hexAsciiTo4Bits(forthHex)
+        let startIndex = readerIndex
+        readerIndex = startIndex + 4
+
+        let firstHex = array[startIndex]
+        let secondHex = array[startIndex + 1]
+        let thirdHex = array[startIndex + 2]
+        let fourthHex = array[startIndex + 3]
+
+        guard let first = firstHex.hexAsciiTo4Bits(),
+              let second = secondHex.hexAsciiTo4Bits(),
+              let third = thirdHex.hexAsciiTo4Bits(),
+              let fourth = fourthHex.hexAsciiTo4Bits()
         else {
-            let hexString = String(decoding: [firstHex, secondHex, thirdHex, forthHex], as: Unicode.UTF8.self)
+            let hexString = String(decoding: [firstHex, secondHex, thirdHex, fourthHex], as: Unicode.UTF8.self)
             throw .invalidHexDigitSequence(hexString, index: startIndex)
         }
         let firstByte = UInt16(first) << 4 | UInt16(second)
-        let secondByte = UInt16(third) << 4 | UInt16(forth)
-
-        let bitPattern = UInt16(firstByte) << 8 | UInt16(secondByte)
-
-        return bitPattern
+        let secondByte = UInt16(third) << 4 | UInt16(fourth)
+        return UInt16(firstByte) << 8 | UInt16(secondByte)
     }
 
     // MARK: Numbers
@@ -348,7 +347,14 @@ public final class TrailerJson: Sendable {
         var numbersSinceControlChar = positive
 
         while true {
-            let byte = read() ?? 0
+            let byte: UInt8
+            if readerIndex < endIndex {
+                byte = array[readerIndex]
+                readerIndex += 1
+            } else {
+                byte = 0
+            }
+
             switch byte {
             case ._zero ... ._nine:
                 numbersSinceControlChar = true

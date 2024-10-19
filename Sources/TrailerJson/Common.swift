@@ -239,16 +239,16 @@ extension Slice<UnsafeRawBufferPointer> {
             return nil
         }
 
-        guard let first = hexAsciiTo4Bits(self[readerIndex]),
-              let second = hexAsciiTo4Bits(self[readerIndex + 1]),
-              let third = hexAsciiTo4Bits(self[readerIndex + 2]),
-              let forth = hexAsciiTo4Bits(self[readerIndex + 3])
+        guard let first = self[readerIndex].hexAsciiTo4Bits(),
+              let second = self[readerIndex + 1].hexAsciiTo4Bits(),
+              let third = self[readerIndex + 2].hexAsciiTo4Bits(),
+              let fourth = self[readerIndex + 3].hexAsciiTo4Bits()
         else {
             return nil
         }
 
         let firstByte = UInt16(first) << 4 | UInt16(second)
-        let secondByte = UInt16(third) << 4 | UInt16(forth)
+        let secondByte = UInt16(third) << 4 | UInt16(fourth)
         return UInt16(firstByte) << 8 | UInt16(secondByte)
     }
 
@@ -277,18 +277,21 @@ extension Slice<UnsafeRawBufferPointer> {
     }
 }
 
-func hexAsciiTo4Bits(_ ascii: UInt8) -> UInt8? {
-    switch ascii {
-    case 48 ... 57:
-        ascii - 48
-    case 65 ... 70:
-        // uppercase letters
-        ascii - 55
-    case 97 ... 102:
-        // lowercase letters
-        ascii - 87
-    default:
-        nil
+extension UInt8 {
+    @inline(__always)
+    func hexAsciiTo4Bits() -> UInt8? {
+        switch self {
+        case 48 ... 57:
+            self - 48
+        case 65 ... 70:
+            // uppercase letters
+            self - 55
+        case 97 ... 102:
+            // lowercase letters
+            self - 87
+        default:
+            nil
+        }
     }
 }
 
