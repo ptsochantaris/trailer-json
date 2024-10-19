@@ -100,7 +100,7 @@ enum ControlCharacter {
     case expOperator
 }
 
-extension Collection where Element == UInt8, Index == Int {
+extension Collection<UInt8> where Index == Int {
     func parseEscapeSequence(at readerIndex: Int) -> (Int, String?) {
         guard readerIndex < endIndex else {
             return (0, nil)
