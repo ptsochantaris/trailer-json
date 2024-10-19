@@ -39,6 +39,10 @@ extension UInt8 {
     static let _charCapitalE = UInt8(ascii: "E")
 }
 
+final class Counter: Sendable {
+    nonisolated(unsafe) var readerIndex = 0
+}
+
 public enum EscapedSequenceError: Swift.Error {
     case expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: Int)
     case unexpectedEscapedCharacter(ascii: UInt8, index: Int)
