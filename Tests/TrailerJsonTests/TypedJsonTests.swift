@@ -1,8 +1,9 @@
 import Foundation
+import Testing
 @testable import TrailerJson
-import XCTest
 
-final class TypedJsonTests: XCTestCase {
+struct TypedJsonTests {
+    @Test
     func testTrickyCharacterDecoding() throws {
         let v1 = "Value with unicode 🙎🏽"
         let v2 = "🙎🏽"
@@ -12,6 +13,7 @@ final class TypedJsonTests: XCTestCase {
         let v6 = 123
         let v7: Float = 123.6
         let v8 = -60
+        let v9 = "/"
 
         let testDictionary: [String: Sendable] = [
             "key1": v1,
@@ -22,6 +24,7 @@ final class TypedJsonTests: XCTestCase {
             "key6": v6,
             "key7": v7,
             "key8": v8,
+            "key9": v9,
             "body": "",
             "arrayOfDictionaries": [
                 ["a", "b"],
@@ -37,45 +40,46 @@ final class TypedJsonTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: testDictionary)
 
         guard let entry = try data.asTypedJson() else {
-            XCTFail("Nil result")
-            return
+            throw "Nil result"
         }
 
-        try XCTAssertEqual(entry["key1"].asString, v1)
-        try XCTAssertEqual(entry["😛"].asString, v2)
-        try XCTAssertEqual(entry["key3"].asString, v3)
-        try XCTAssertEqual(entry["key4"].asString, v4)
-        try XCTAssertEqual(entry["key5"].asString, v5)
-        try XCTAssertEqual(entry["key6"].asInt, v6)
-        try XCTAssertEqual(entry["key7"].asFloat, v7)
-        try XCTAssertEqual(entry["key8"].asInt, v8)
+        try #expect(entry["key1"].asString == v1)
+        try #expect(entry["😛"].asString == v2)
+        try #expect(entry["key3"].asString == v3)
+        try #expect(entry["key4"].asString == v4)
+        try #expect(entry["key5"].asString == v5)
+        try #expect(entry["key6"].asInt == v6)
+        try #expect(entry["key7"].asFloat == v7)
+        try #expect(entry["key8"].asInt == v8)
+        try #expect(entry["key9"].asString == v9)
 
         if let reconstructed = try entry.parsed as? [String: Sendable] {
-            XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
+            #expect(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
         } else {
-            XCTFail()
+            throw "Not macthing"
         }
     }
 
+    @Test
     func testEmptyStringValue() throws {
         let testDictionary: [String: Sendable] = ["body": ""]
 
         let data = try JSONSerialization.data(withJSONObject: testDictionary)
 
         guard let entry = try data.asTypedJson() else {
-            XCTFail("Nil result")
-            return
+            throw "Nil result"
         }
 
-        try XCTAssertEqual(entry["body"].asString, "")
+        try #expect(entry["body"].asString == "")
 
         if let reconstructed = try entry.parsed as? [String: Sendable] {
-            XCTAssert(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
+            #expect(NSDictionary(dictionary: reconstructed) == NSDictionary(dictionary: testDictionary))
         } else {
-            XCTFail()
+            throw "Not macthing"
         }
     }
 
+    @Test
     func testInvalidPayload() throws {
         func checkThrows(_ string: String?) {
             do {
@@ -100,12 +104,12 @@ final class TypedJsonTests: XCTestCase {
             do {
                 try block()
                 if shouldThrow {
-                    XCTFail()
+                    throw "Should have thrown"
                 }
             } catch let error as JSONError {
                 if case .incorrectTypeRequested = error {
                     if !shouldThrow {
-                        XCTFail()
+                        throw "Should not have thrown"
                     }
                 } else {
                     throw error
@@ -132,147 +136,146 @@ final class TypedJsonTests: XCTestCase {
         }
     }
 
+    @Test
     func testFragmentParsing() throws {
         func parsed(_ string: String, completion: (TypedJson.Entry?) throws -> Void) throws {
             try completion(string.data(using: .utf8)!.asTypedJson())
         }
 
         try parsed("5") {
-            try XCTAssert($0?.asInt == 5)
+            try #expect($0?.asInt == 5)
         }
 
         try parsed("  5") {
-            try XCTAssert($0?.asInt == 5)
+            try #expect($0?.asInt == 5)
         }
 
         try parsed("  5  ") {
-            try XCTAssert($0?.asInt == 5)
+            try #expect($0?.asInt == 5)
         }
 
         try parsed("5,3") {
-            try XCTAssert($0?.asInt == 5)
+            try #expect($0?.asInt == 5)
         }
 
         try parsed("null") {
-            XCTAssertNil($0)
+            #expect($0 == nil)
         }
 
         try parsed(" null") {
-            XCTAssertNil($0)
+            #expect($0 == nil)
         }
 
         try parsed("null ") {
-            XCTAssertNil($0)
+            #expect($0 == nil)
         }
 
         try parsed("  [14,5]") {
-            try XCTAssert($0?[0].asInt == 14)
-            try XCTAssert($0?[1].asInt == 5)
+            try #expect($0?[0].asInt == 14)
+            try #expect($0?[1].asInt == 5)
         }
 
         try parsed(" [45,5]") {
-            try XCTAssert($0?[0].asInt == 45)
-            try XCTAssert($0?[1].asInt == 5)
+            try #expect($0?[0].asInt == 45)
+            try #expect($0?[1].asInt == 5)
         }
 
         try parsed("[4,5] ") {
-            try XCTAssert($0?[0].asInt == 4)
-            try XCTAssert($0?[1].asInt == 5)
+            try #expect($0?[0].asInt == 4)
+            try #expect($0?[1].asInt == 5)
         }
 
         try parsed(" [  -1234,null ,5, [\"x\", {\"a\": [\"hi\", \"there\"]}]]") {
-            try XCTAssert($0?[0].asInt == -1234)
-            try XCTAssert($0?[1].asInt == 5)
+            try #expect($0?[0].asInt == -1234)
+            try #expect($0?[1].asInt == 5)
 
-            XCTAssertEqual($0?.potentialInt(at: 1), 5)
-            XCTAssertEqual($0?.potentialArray(at: 2)?[1].potentialArray(named: "a")?.first?.potentialString, "hi")
+            #expect($0?.potentialInt(at: 1) == 5)
+            #expect($0?.potentialArray(at: 2)?[1].potentialArray(named: "a")?.first?.potentialString == "hi")
 
             let obj = $0?.potentialObject(at: 1)
-            XCTAssert(obj?.potentialInt == 5)
-            XCTAssertNil(obj?.potentialBool)
-            XCTAssertNil(obj?.potentialArray)
-            XCTAssertNil(obj?.potentialObject(at: 1))
-            XCTAssertNil(obj?.potentialObject(named: "fnord"))
-            XCTAssertNil(obj?.potentialFloat)
+            #expect(obj?.potentialInt == 5)
+            #expect(obj?.potentialBool == nil)
+            #expect(obj?.potentialArray == nil)
+            #expect(obj?.potentialObject(at: 1) == nil)
+            #expect(obj?.potentialObject(named: "fnord") == nil)
+            #expect(obj?.potentialFloat == nil)
         }
 
         try parsed("{ \"a\":\"b\" }   meh  ") {
-            try XCTAssert($0?["a"].asString == "b")
-            XCTAssert($0?.potentialString(named: "a") == "b")
-            XCTAssertNil($0?.potentialInt(named: "a"))
-            XCTAssertNil($0?.potentialString(named: "fnord"))
-            XCTAssertEqual($0?.potentialString(named: "a"), "b")
+            try #expect($0?["a"].asString == "b")
+            #expect($0?.potentialString(named: "a") == "b")
+            #expect($0?.potentialInt(named: "a") == nil)
+            #expect($0?.potentialString(named: "fnord") == nil)
+            #expect($0?.potentialString(named: "a") == "b")
         }
 
         try parsed("    { \"a\":\"b\" }   meh  ") {
-            try XCTAssert($0?["a"].asString == "b")
+            try #expect($0?["a"].asString == "b")
         }
 
         try parsed("    { \"a\":\"b\" }") {
-            try XCTAssert($0?["a"].asString == "b")
+            try #expect($0?["a"].asString == "b")
         }
 
         try parsed(" { \"a\"  :  \" b \"}}\"") {
-            try XCTAssert($0?["a"].asString == " b ")
+            try #expect($0?["a"].asString == " b ")
         }
 
         try parsed(" \"a\"") {
-            try XCTAssert($0?.asString == "a")
+            try #expect($0?.asString == "a")
         }
 
         try parsed(" \"a\" ") {
-            try XCTAssert($0?.asString == "a")
+            try #expect($0?.asString == "a")
         }
 
         try parsed("\"a\" ") {
-            try XCTAssert($0?.asString == "a")
+            try #expect($0?.asString == "a")
         }
 
         try parsed("\"a\"") {
-            try XCTAssert($0?.asString == "a")
+            try #expect($0?.asString == "a")
         }
     }
 
+    @Test
     func testMock() throws {
         let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
 
         guard let object = try jsonData.asTypedJson() else {
-            XCTFail("Did not parse root entry")
-            return
+            throw "Did not parse root entry"
         }
 
-        try XCTAssertEqual(object["type"].asString, "FeatureCollection")
+        try #expect(object["type"].asString == "FeatureCollection")
 
         let features = try object["features"].asArray
-        XCTAssert(features.count == 10000)
+        #expect(features.count == 10000)
         guard let lastFeature = features.last else {
-            XCTFail()
-            return
+            throw "Did not parse features"
         }
 
         let properties = try lastFeature["properties"]
-        try XCTAssertEqual(properties["BLKLOT"].asString, "0253A090")
+        try #expect(properties["BLKLOT"].asString == "0253A090")
 
         guard let geometry = try? lastFeature["geometry"],
               let coordinates = try? geometry["coordinates"],
               let secondList = try coordinates[0].asArray.first
         else {
-            XCTFail()
-            return
+            throw "Did not parse geometry"
         }
 
         let number = try secondList[0].asFloat
-        XCTAssert(number == -122.41356780832439)
+        #expect(number == -122.41356780832439)
     }
 
+    @Test
     func testNetwork() async throws {
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
 
         guard let object = try data.asTypedJson() else {
-            XCTFail("Did not parse root entry")
-            return
+            throw "Did not parse root entry"
         }
 
         let timeString = try object["time"].asString

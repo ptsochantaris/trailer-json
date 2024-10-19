@@ -96,66 +96,8 @@ enum ControlCharacter {
     case expOperator
 }
 
-extension Slice<UnsafeRawBufferPointer> {
-    var asRawString: String {
-        String(unsafeUninitializedCapacity: count) { pointer in
-            _ = pointer.initialize(fromContentsOf: self)
-            return count
-        }
-    }
-
-    var asUnescapedString: String {
-        get throws(JSONError) {
-            var output: String?
-            var readerIndex = startIndex
-            let end = endIndex
-
-            guard readerIndex < end else {
-                return ""
-            }
-
-            var segmentStartIndex = readerIndex
-
-            while readerIndex < end {
-                let byte = self[readerIndex]
-
-                switch byte {
-                case 0 ... 31:
-                    throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
-
-                case ._backslash:
-                    if let existing = output {
-                        output = existing + self[segmentStartIndex ..< readerIndex].asRawString
-                    } else {
-                        output = self[segmentStartIndex ..< readerIndex].asRawString
-                    }
-
-                    readerIndex += 1
-                    let seq = parseEscapeSequence(at: readerIndex)
-                    if let text = seq.1 {
-                        if let existing = output {
-                            output = existing + text
-                        } else {
-                            output = text
-                        }
-                    }
-                    readerIndex += seq.0
-                    segmentStartIndex = readerIndex
-
-                default:
-                    readerIndex += 1
-                }
-            }
-
-            if let output {
-                return output + self[segmentStartIndex ..< readerIndex].asRawString
-            } else {
-                return self[segmentStartIndex ..< readerIndex].asRawString
-            }
-        }
-    }
-
-    private func parseEscapeSequence(at readerIndex: Int) -> (Int, String?) {
+extension Collection where Element == UInt8, Index == Int {
+    func parseEscapeSequence(at readerIndex: Int) -> (Int, String?) {
         guard readerIndex < endIndex else {
             return (0, nil)
         }
@@ -249,30 +191,16 @@ extension Slice<UnsafeRawBufferPointer> {
 
         let firstByte = UInt16(first) << 4 | UInt16(second)
         let secondByte = UInt16(third) << 4 | UInt16(fourth)
-        return UInt16(firstByte) << 8 | UInt16(secondByte)
+        return firstByte << 8 | secondByte
     }
+}
 
-    var asInt: Int {
-        var total = 0
-        if self[startIndex] == ._minus {
-            for index in startIndex + 1 ..< endIndex {
-                total = (total * 10) - Int(self[index] & 15)
-            }
-        } else {
-            for index in startIndex ..< endIndex {
-                total = (total * 10) + Int(self[index] & 15)
-            }
-        }
-        return total
-    }
-
-    var asFloat: Float {
-        get throws(JSONError) {
-            let str = self[startIndex ..< endIndex].asRawString
-            if let value = Float(str) {
-                return value
-            }
-            throw .numberIsNotRepresentableInSwift(parsed: str)
+extension Slice<UnsafeRawBufferPointer> {
+    var asRawString: String {
+        let c = count
+        return String(unsafeUninitializedCapacity: c) { pointer in
+            _ = pointer.initialize(fromContentsOf: self)
+            return c
         }
     }
 }

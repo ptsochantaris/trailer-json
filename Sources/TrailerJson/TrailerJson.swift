@@ -33,13 +33,13 @@ public final class TrailerJson: Sendable {
     /**
      Performs the parsing of the provided data. Once the data is parsed, it can be discarded as everythig has been copied to the parsed items.
      ```
-         let byteBuffer: ByteBuffer = ...
+     let byteBuffer: ByteBuffer = ...
 
-         let jsonArray = try byteBuffer.withVeryUnsafeBytes {
-             try TrailerJson.parse(bytes: $0) as? [Sendable]
-         }
-         let number = jsonArray[1] as? Int
-         print(number)
+     let jsonArray = try byteBuffer.withVeryUnsafeBytes {
+     try TrailerJson.parse(bytes: $0) as? [Sendable]
+     }
+     let number = jsonArray[1] as? Int
+     print(number)
      ```
      */
     public static func parse(bytes: UnsafeRawBufferPointer) throws(JSONError) -> Sendable? {
@@ -180,162 +180,54 @@ public final class TrailerJson: Sendable {
         throw .unexpectedEndOfFile
     }
 
-    // MARK: String
+    // MARK: Strings
 
     private func readString() throws(JSONError) -> String {
-        var stringStartIndex = readerIndex
         var output: String?
+        var segmentStartIndex = readerIndex
 
         while readerIndex < endIndex {
             let byte = array[readerIndex]
-            readerIndex += 1
 
             switch byte {
-            case ._quote:
-                let currentCharIndex = readerIndex - 1
-                if let output {
-                    return output + array[stringStartIndex ..< currentCharIndex].asRawString
-                } else {
-                    return array[stringStartIndex ..< currentCharIndex].asRawString
-                }
-
             case 0 ... 31:
-                let currentCharIndex = readerIndex - 1
-                // All Unicode characters may be placed within the
-                // quotation marks, except for the characters that must be escaped:
-                // quotation mark, reverse solidus, and the control characters (U+0000
-                // through U+001F).
-                let string: String = if let output {
-                    output + array[stringStartIndex ... currentCharIndex].asRawString
+                throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
+
+            case ._quote:
+                let text = array[segmentStartIndex ..< readerIndex].asRawString
+                readerIndex += 1
+
+                if let output {
+                    return output + text
                 } else {
-                    array[stringStartIndex ... currentCharIndex].asRawString
+                    return text
                 }
-                throw .unescapedControlCharacterInString(ascii: byte, in: string, index: currentCharIndex)
 
             case ._backslash:
-                let currentCharIndex = readerIndex - 1
                 if let existing = output {
-                    output = existing + array[stringStartIndex ..< currentCharIndex].asRawString
+                    output = existing + array[segmentStartIndex ..< readerIndex].asRawString
                 } else {
-                    output = array[stringStartIndex ..< currentCharIndex].asRawString
+                    output = array[segmentStartIndex ..< readerIndex].asRawString
                 }
 
-                if let existing = output {
-                    output = try existing + parseEscapeSequence()
-                } else {
-                    output = try parseEscapeSequence()
+                readerIndex += 1
+                let seq = array.parseEscapeSequence(at: readerIndex)
+                if let text = seq.1 {
+                    if let existing = output {
+                        output = existing + text
+                    } else {
+                        output = text
+                    }
                 }
-                stringStartIndex = readerIndex
+                readerIndex += seq.0
+                segmentStartIndex = readerIndex
 
             default:
-                break
+                readerIndex += 1
             }
         }
 
         throw .unexpectedEndOfFile
-    }
-
-    private func parseEscapeSequence() throws(JSONError) -> String {
-        guard readerIndex < endIndex else {
-            throw .unexpectedEndOfFile
-        }
-
-        let ascii = array[readerIndex]
-        readerIndex += 1
-
-        switch ascii {
-        case 0x22: return "\""
-        case 0x5C: return "\\"
-        case 0x2F: return "/"
-        case 0x62: return "\u{08}" // \b
-        case 0x66: return "\u{0C}" // \f
-        case 0x6E: return "\u{0A}" // \n
-        case 0x72: return "\u{0D}" // \r
-        case 0x74: return "\u{09}" // \t
-        case 0x75:
-            let character = try parseUnicodeSequence()
-            return String(character)
-        default:
-            throw .faultyEscapeSequence(.unexpectedEscapedCharacter(ascii: ascii, index: readerIndex - 1), in: "<unicode literal>")
-        }
-    }
-
-    private func parseUnicodeSequence() throws(JSONError) -> Unicode.Scalar {
-        // we build this for utf8 only for now.
-        let bitPattern = try parseUnicodeHexSequence()
-
-        // check if high surrogate
-        let isFirstByteHighSurrogate = bitPattern & 0xFC00 // nil everything except first six bits
-        if isFirstByteHighSurrogate == 0xD800 {
-            // if we have a high surrogate we expect a low surrogate next
-            let highSurrogateBitPattern = bitPattern
-            let index = readerIndex
-            guard index < endIndex - 2 else {
-                throw .unexpectedEndOfFile
-            }
-            let escapeChar = array[index]
-            let uChar = array[index + 1]
-            readerIndex = index + 2
-
-            guard escapeChar == UInt8(ascii: #"\"#), uChar == UInt8(ascii: "u") else {
-                let error = EscapedSequenceError.expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: readerIndex - 1)
-                throw .faultyEscapeSequence(error, in: "<unicode literal>")
-            }
-
-            let lowSurrogateBitBattern = try parseUnicodeHexSequence()
-            let isSecondByteLowSurrogate = lowSurrogateBitBattern & 0xFC00 // nil everything except first six bits
-            guard isSecondByteLowSurrogate == 0xDC00 else {
-                // we are in an escaped sequence. for this reason an output string must have
-                // been initialized
-                let error = EscapedSequenceError.expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: readerIndex - 1)
-                throw .faultyEscapeSequence(error, in: "<unicode literal>")
-            }
-
-            let highValue = UInt32(highSurrogateBitPattern - 0xD800) * 0x400
-            let lowValue = UInt32(lowSurrogateBitBattern - 0xDC00)
-            let unicodeValue = highValue + lowValue + 0x10000
-            guard let unicode = Unicode.Scalar(unicodeValue) else {
-                let error = EscapedSequenceError.couldNotCreateUnicodeScalarFromUInt32(index: readerIndex, unicodeScalarValue: unicodeValue)
-                throw .faultyEscapeSequence(error, in: "<unicode literal>")
-            }
-            return unicode
-        }
-
-        guard let unicode = Unicode.Scalar(bitPattern) else {
-            let error = EscapedSequenceError.couldNotCreateUnicodeScalarFromUInt32(index: readerIndex, unicodeScalarValue: UInt32(bitPattern))
-            throw .faultyEscapeSequence(error, in: "<unicode literal>")
-        }
-
-        return unicode
-    }
-
-    private func parseUnicodeHexSequence() throws(JSONError) -> UInt16 {
-        // As stated in RFC-8259 an escaped unicode character is 4 HEXDIGITs long
-        // https://tools.ietf.org/html/rfc8259#section-7
-
-        guard readerIndex < endIndex - 4 else {
-            throw .unexpectedEndOfFile
-        }
-
-        let startIndex = readerIndex
-        readerIndex = startIndex + 4
-
-        let firstHex = array[startIndex]
-        let secondHex = array[startIndex + 1]
-        let thirdHex = array[startIndex + 2]
-        let fourthHex = array[startIndex + 3]
-
-        guard let first = firstHex.hexAsciiTo4Bits(),
-              let second = secondHex.hexAsciiTo4Bits(),
-              let third = thirdHex.hexAsciiTo4Bits(),
-              let fourth = fourthHex.hexAsciiTo4Bits()
-        else {
-            let hexString = String(decoding: [firstHex, secondHex, thirdHex, fourthHex], as: Unicode.UTF8.self)
-            throw .invalidHexDigitSequence(hexString, index: startIndex)
-        }
-        let firstByte = UInt16(first) << 4 | UInt16(second)
-        let secondByte = UInt16(third) << 4 | UInt16(fourth)
-        return UInt16(firstByte) << 8 | UInt16(secondByte)
     }
 
     // MARK: Numbers
