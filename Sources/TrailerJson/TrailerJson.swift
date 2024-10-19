@@ -24,7 +24,7 @@ public final class TrailerJson: Sendable {
     private let endIndex: Int
     private nonisolated(unsafe) var readerIndex = 0
 
-    private init(bytes: UnsafeRawBufferPointer) throws {
+    private init(bytes: UnsafeRawBufferPointer) throws(JSONError) {
         array = bytes
         endIndex = bytes.endIndex
         try consumeWhitespace()
@@ -42,13 +42,13 @@ public final class TrailerJson: Sendable {
          print(number)
      ```
      */
-    public static func parse(bytes: UnsafeRawBufferPointer) throws -> Sendable? {
+    public static func parse(bytes: UnsafeRawBufferPointer) throws(JSONError) -> Sendable? {
         try TrailerJson(bytes: bytes).parseValue()
     }
 
     // MARK: Generic Value Parsing
 
-    private func parseValue() throws -> Sendable? {
+    private func parseValue() throws(JSONError) -> Sendable? {
         while let byte = read() {
             switch byte {
             case ._quote:
@@ -58,13 +58,13 @@ public final class TrailerJson: Sendable {
             case ._openbracket:
                 return try parseArray()
             case ._charF:
-                try skip(4)
+                readerIndex += 4
                 return false
             case ._charT:
-                try skip(3)
+                readerIndex += 3
                 return true
             case ._charN:
-                try skip(3)
+                readerIndex += 3
                 return nil
             case ._minus:
                 return try parseNumber(positive: false)
@@ -73,16 +73,16 @@ public final class TrailerJson: Sendable {
             case 0 ... 32:
                 readerIndex += 1
             default:
-                throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
             }
         }
 
-        throw JSONError.unexpectedEndOfFile
+        throw .unexpectedEndOfFile
     }
 
     // MARK: - Parse Array -
 
-    private func parseArray() throws -> [Sendable] {
+    private func parseArray() throws(JSONError) -> [Sendable] {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebracket {
             // if the first char after whitespace is a closing bracket, we found an empty array
@@ -117,14 +117,14 @@ public final class TrailerJson: Sendable {
                 }
 
             default:
-                throw JSONError.unexpectedCharacter(ascii: ascii, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: ascii, characterIndex: readerIndex)
             }
         }
     }
 
     // MARK: - Object parsing -
 
-    private func parseObject() throws -> JSON {
+    private func parseObject() throws(JSONError) -> JSON {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebrace {
             // if the first char after whitespace is a closing bracket, we found an empty array
@@ -139,7 +139,7 @@ public final class TrailerJson: Sendable {
             let key = try readString()
             let colon = try consumeWhitespace()
             guard colon == ._colon else {
-                throw JSONError.unexpectedCharacter(ascii: colon, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: colon, characterIndex: readerIndex)
             }
             readerIndex += 1
             try consumeWhitespace()
@@ -159,7 +159,7 @@ public final class TrailerJson: Sendable {
                 }
                 continue
             default:
-                throw JSONError.unexpectedCharacter(ascii: commaOrBrace, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: commaOrBrace, characterIndex: readerIndex)
             }
         }
     }
@@ -178,7 +178,7 @@ public final class TrailerJson: Sendable {
     }
 
     @discardableResult
-    private func consumeWhitespace() throws -> UInt8 {
+    private func consumeWhitespace() throws(JSONError) -> UInt8 {
         while readerIndex < endIndex {
             let ascii = array[readerIndex]
             if ascii > 32 {
@@ -187,21 +187,12 @@ public final class TrailerJson: Sendable {
             readerIndex += 1
         }
 
-        throw JSONError.unexpectedEndOfFile
-    }
-
-    @inline(__always)
-    private func skip(_ num: Int) throws {
-        readerIndex += num
-
-        guard readerIndex <= endIndex else {
-            throw JSONError.unexpectedEndOfFile
-        }
+        throw .unexpectedEndOfFile
     }
 
     // MARK: String
 
-    private func readString() throws -> String {
+    private func readString() throws(JSONError) -> String {
         var stringStartIndex = readerIndex
         var output: String?
 
@@ -226,7 +217,7 @@ public final class TrailerJson: Sendable {
                 } else {
                     array[stringStartIndex ... currentCharIndex].asRawString
                 }
-                throw JSONError.unescapedControlCharacterInString(ascii: byte, in: string, index: currentCharIndex)
+                throw .unescapedControlCharacterInString(ascii: byte, in: string, index: currentCharIndex)
 
             case ._backslash:
                 let currentCharIndex = readerIndex - 1
@@ -236,30 +227,24 @@ public final class TrailerJson: Sendable {
                     output = array[stringStartIndex ..< currentCharIndex].asRawString
                 }
 
-                do {
-                    if let existing = output {
-                        output = try existing + parseEscapeSequence()
-                    } else {
-                        output = try parseEscapeSequence()
-                    }
-                    stringStartIndex = readerIndex
-
-                } catch let error as EscapedSequenceError {
-                    output! += array[currentCharIndex ..< readerIndex].asRawString
-                    throw JSONError.faultyEscapeSequence(error, in: output!)
+                if let existing = output {
+                    output = try existing + parseEscapeSequence()
+                } else {
+                    output = try parseEscapeSequence()
                 }
+                stringStartIndex = readerIndex
 
             default:
                 break
             }
         }
 
-        throw JSONError.unexpectedEndOfFile
+        throw .unexpectedEndOfFile
     }
 
-    private func parseEscapeSequence() throws -> String {
+    private func parseEscapeSequence() throws(JSONError) -> String {
         guard let ascii = read() else {
-            throw JSONError.unexpectedEndOfFile
+            throw .unexpectedEndOfFile
         }
 
         switch ascii {
@@ -275,11 +260,11 @@ public final class TrailerJson: Sendable {
             let character = try parseUnicodeSequence()
             return String(character)
         default:
-            throw EscapedSequenceError.unexpectedEscapedCharacter(ascii: ascii, index: readerIndex - 1)
+            throw .faultyEscapeSequence(.unexpectedEscapedCharacter(ascii: ascii, index: readerIndex - 1), in: "<unicode literal>")
         }
     }
 
-    private func parseUnicodeSequence() throws -> Unicode.Scalar {
+    private func parseUnicodeSequence() throws(JSONError) -> Unicode.Scalar {
         // we build this for utf8 only for now.
         let bitPattern = try parseUnicodeHexSequence()
 
@@ -291,11 +276,12 @@ public final class TrailerJson: Sendable {
             guard let escapeChar = read(),
                   let uChar = read()
             else {
-                throw JSONError.unexpectedEndOfFile
+                throw .unexpectedEndOfFile
             }
 
             guard escapeChar == UInt8(ascii: #"\"#), uChar == UInt8(ascii: "u") else {
-                throw EscapedSequenceError.expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: readerIndex - 1)
+                let error = EscapedSequenceError.expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: readerIndex - 1)
+                throw .faultyEscapeSequence(error, in: "<unicode literal>")
             }
 
             let lowSurrogateBitBattern = try parseUnicodeHexSequence()
@@ -303,25 +289,29 @@ public final class TrailerJson: Sendable {
             guard isSecondByteLowSurrogate == 0xDC00 else {
                 // we are in an escaped sequence. for this reason an output string must have
                 // been initialized
-                throw EscapedSequenceError.expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: readerIndex - 1)
+                let error = EscapedSequenceError.expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: readerIndex - 1)
+                throw .faultyEscapeSequence(error, in: "<unicode literal>")
             }
 
             let highValue = UInt32(highSurrogateBitPattern - 0xD800) * 0x400
             let lowValue = UInt32(lowSurrogateBitBattern - 0xDC00)
             let unicodeValue = highValue + lowValue + 0x10000
             guard let unicode = Unicode.Scalar(unicodeValue) else {
-                throw EscapedSequenceError.couldNotCreateUnicodeScalarFromUInt32(index: readerIndex, unicodeScalarValue: unicodeValue)
+                let error = EscapedSequenceError.couldNotCreateUnicodeScalarFromUInt32(index: readerIndex, unicodeScalarValue: unicodeValue)
+                throw .faultyEscapeSequence(error, in: "<unicode literal>")
             }
             return unicode
         }
 
         guard let unicode = Unicode.Scalar(bitPattern) else {
-            throw EscapedSequenceError.couldNotCreateUnicodeScalarFromUInt32(index: readerIndex, unicodeScalarValue: UInt32(bitPattern))
+            let error = EscapedSequenceError.couldNotCreateUnicodeScalarFromUInt32(index: readerIndex, unicodeScalarValue: UInt32(bitPattern))
+            throw .faultyEscapeSequence(error, in: "<unicode literal>")
         }
+
         return unicode
     }
 
-    private func parseUnicodeHexSequence() throws -> UInt16 {
+    private func parseUnicodeHexSequence() throws(JSONError) -> UInt16 {
         // As stated in RFC-8259 an escaped unicode character is 4 HEXDIGITs long
         // https://tools.ietf.org/html/rfc8259#section-7
         let startIndex = readerIndex
@@ -330,7 +320,7 @@ public final class TrailerJson: Sendable {
               let thirdHex = read(),
               let forthHex = read()
         else {
-            throw JSONError.unexpectedEndOfFile
+            throw .unexpectedEndOfFile
         }
 
         guard let first = hexAsciiTo4Bits(firstHex),
@@ -339,7 +329,7 @@ public final class TrailerJson: Sendable {
               let forth = hexAsciiTo4Bits(forthHex)
         else {
             let hexString = String(decoding: [firstHex, secondHex, thirdHex, forthHex], as: Unicode.UTF8.self)
-            throw JSONError.invalidHexDigitSequence(hexString, index: startIndex)
+            throw .invalidHexDigitSequence(hexString, index: startIndex)
         }
         let firstByte = UInt16(first) << 4 | UInt16(second)
         let secondByte = UInt16(third) << 4 | UInt16(forth)
@@ -351,7 +341,7 @@ public final class TrailerJson: Sendable {
 
     // MARK: Numbers
 
-    private func parseNumber(positive: Bool) throws -> Sendable {
+    private func parseNumber(positive: Bool) throws(JSONError) -> Sendable {
         let startIndex = readerIndex - 1
 
         var pastControlChar: ControlCharacter = .operand
@@ -365,7 +355,7 @@ public final class TrailerJson: Sendable {
 
             case ._period:
                 guard numbersSinceControlChar, pastControlChar == .operand else {
-                    throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
+                    throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
                 }
                 pastControlChar = .decimalPoint
                 numbersSinceControlChar = false
@@ -374,14 +364,14 @@ public final class TrailerJson: Sendable {
                 guard numbersSinceControlChar,
                       pastControlChar == .operand || pastControlChar == .decimalPoint
                 else {
-                    throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
+                    throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
                 }
                 pastControlChar = .exp
                 numbersSinceControlChar = false
 
             case ._minus, ._plus:
                 guard !numbersSinceControlChar, pastControlChar == .exp else {
-                    throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
+                    throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
                 }
                 pastControlChar = .expOperator
                 numbersSinceControlChar = false
@@ -389,11 +379,11 @@ public final class TrailerJson: Sendable {
             case ._closebrace, ._closebracket, ._comma, ._newline, ._return, ._space, ._tab, 0:
                 if byte == 0 { // end of file, possible fragment
                     guard numbersSinceControlChar else {
-                        throw JSONError.unexpectedEndOfFile
+                        throw .unexpectedEndOfFile
                     }
                 } else {
                     guard numbersSinceControlChar else {
-                        throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
+                        throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
                     }
                     readerIndex -= 1
                 }
@@ -402,12 +392,12 @@ public final class TrailerJson: Sendable {
                 case .decimalPoint:
                     let stringValue = array[startIndex ..< readerIndex].asRawString
                     guard let result = Float(stringValue) else {
-                        throw JSONError.numberIsNotRepresentableInSwift(parsed: stringValue)
+                        throw .numberIsNotRepresentableInSwift(parsed: stringValue)
                     }
                     return result
                 case .exp, .expOperator:
                     let stringValue = array[startIndex ..< readerIndex].asRawString
-                    throw JSONError.numberIsNotRepresentableInSwift(parsed: stringValue)
+                    throw .numberIsNotRepresentableInSwift(parsed: stringValue)
                 case .operand:
                     var total = 0
                     if positive {
@@ -423,7 +413,7 @@ public final class TrailerJson: Sendable {
                 }
 
             default:
-                throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
+                throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex - 1)
             }
         }
     }

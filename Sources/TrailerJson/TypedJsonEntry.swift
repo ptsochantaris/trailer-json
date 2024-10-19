@@ -87,91 +87,91 @@ public extension TypedJson {
         /// Get an integer.
         /// - Throws: If the parsed value is not this type.
         public var asInt: Int {
-            get throws {
+            get throws(JSONError) {
                 if case let .int(buffer, from, to) = self {
                     return buffer.slice(from, to).asInt
                 }
-                throw JSONError.incorrectTypeRequested(requested: "Int", detected: typeName)
+                throw .incorrectTypeRequested(requested: "Int", detected: typeName)
             }
         }
 
         /// Get a float.
         /// - Throws: If the parsed value is not this type.
         public var asFloat: Float {
-            get throws {
+            get throws(JSONError) {
                 if case let .float(buffer, from, to) = self {
                     return try buffer.slice(from, to).asFloat
                 }
-                throw JSONError.incorrectTypeRequested(requested: "Float", detected: typeName)
+                throw .incorrectTypeRequested(requested: "Float", detected: typeName)
             }
         }
 
         /// Get a bool.
         /// - Throws: If the parsed value is not this type.
         public var asBool: Bool {
-            get throws {
+            get throws(JSONError) {
                 if case let .bool(buffer, from, _) = self {
                     return buffer.byte(at: from) == ._charT
                 }
-                throw JSONError.incorrectTypeRequested(requested: "Bool", detected: typeName)
+                throw .incorrectTypeRequested(requested: "Bool", detected: typeName)
             }
         }
 
         /// Get a string.
         /// - Throws: If the parsed value is not this type.
         public var asString: String {
-            get throws {
+            get throws(JSONError) {
                 if case let .string(buffer, from, to) = self {
                     return try buffer.slice(from, to).asUnescapedString
                 }
-                throw JSONError.incorrectTypeRequested(requested: "String", detected: typeName)
+                throw .incorrectTypeRequested(requested: "String", detected: typeName)
             }
         }
 
         /// Get an entry for a field.
         /// - Throws: If the parsed item is not an object, or the field does not exist.
         public subscript(named: String) -> Entry {
-            get throws {
+            get throws(JSONError) {
                 if case let .object(fields) = self {
                     if let entry = fields[named] {
                         return entry
                     }
-                    throw JSONError.fieldNotFound(field: named)
+                    throw .fieldNotFound(field: named)
                 }
-                throw JSONError.incorrectTypeRequested(requested: "Object", detected: typeName)
+                throw .incorrectTypeRequested(requested: "Object", detected: typeName)
             }
         }
 
         /// Get an entry at an array index.
         /// - Throws: If the parsed item is not an array, or the index is out of range.
         public subscript(index: Int) -> Entry {
-            get throws {
+            get throws(JSONError) {
                 if case let .array(items) = self, index >= 0, index < items.count {
                     return items[index]
                 }
-                throw JSONError.incorrectTypeRequested(requested: "Array", detected: typeName)
+                throw .incorrectTypeRequested(requested: "Array", detected: typeName)
             }
         }
 
         /// Get an array of entries.
         /// - Throws: If the parsed value is not an array.
         public var asArray: [Entry] {
-            get throws {
+            get throws(JSONError) {
                 if case let .array(items) = self {
                     return items
                 }
-                throw JSONError.incorrectTypeRequested(requested: "Array", detected: typeName)
+                throw .incorrectTypeRequested(requested: "Array", detected: typeName)
             }
         }
 
         /// Get the names of the keys for this object.
         /// - Throws: If the parsed item is not an object, or the field does not exist.
         public var keys: [String] {
-            get throws {
+            get throws(JSONError) {
                 if case let .object(fields) = self {
                     return Array(fields.keys)
                 }
-                throw JSONError.incorrectTypeRequested(requested: "Object", detected: typeName)
+                throw .incorrectTypeRequested(requested: "Object", detected: typeName)
             }
         }
 

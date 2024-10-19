@@ -75,7 +75,7 @@ public final class TypedJson: Sendable {
         }
     }
 
-    private func sliceValue() throws -> Entry? {
+    private func sliceValue() throws(JSONError) -> Entry? {
         while readerIndex < endIndex {
             let byte = array[readerIndex]
             readerIndex += 1
@@ -88,27 +88,27 @@ public final class TypedJson: Sendable {
             case ._openbracket:
                 return try sliceArray()
             case ._charF:
-                try skip(4)
+                readerIndex += 4
                 return .bool(self, from: readerIndex - 5, to: readerIndex)
             case ._charT:
-                try skip(3)
+                readerIndex += 3
                 return .bool(self, from: readerIndex - 4, to: readerIndex)
             case ._charN:
-                try skip(3)
+                readerIndex += 3
                 return nil
             case ._minus, ._zero ... ._nine:
                 return sliceNumber()
             default:
-                throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
             }
         }
 
-        throw JSONError.unexpectedEndOfFile
+        throw .unexpectedEndOfFile
     }
 
     // MARK: - Parse Array -
 
-    private func sliceArray() throws -> Entry? {
+    private func sliceArray() throws(JSONError) -> Entry? {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebracket {
             // if the first char after whitespace is a closing bracket, we found an empty array
@@ -142,12 +142,12 @@ public final class TypedJson: Sendable {
                 }
 
             default:
-                throw JSONError.unexpectedCharacter(ascii: ascii, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: ascii, characterIndex: readerIndex)
             }
         }
     }
 
-    private func sliceObject() throws -> Entry? {
+    private func sliceObject() throws(JSONError) -> Entry? {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebrace {
             // if the first char after whitespace is a closing bracket, we found an empty object
@@ -162,7 +162,7 @@ public final class TypedJson: Sendable {
             let key = sliceRawString()
             let colon = try consumeWhitespace()
             guard colon == ._colon else {
-                throw JSONError.unexpectedCharacter(ascii: colon, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: colon, characterIndex: readerIndex)
             }
             readerIndex += 1 // colon
             try consumeWhitespace()
@@ -180,7 +180,7 @@ public final class TypedJson: Sendable {
                     return .object(map)
                 }
             default:
-                throw JSONError.unexpectedCharacter(ascii: commaOrBrace, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: commaOrBrace, characterIndex: readerIndex)
             }
         }
     }
@@ -253,7 +253,7 @@ public final class TypedJson: Sendable {
     }
 
     @discardableResult
-    private func consumeWhitespace() throws -> UInt8 {
+    private func consumeWhitespace() throws(JSONError) -> UInt8 {
         while readerIndex < endIndex {
             let ascii = array[readerIndex]
             if ascii > 32 {
@@ -262,16 +262,7 @@ public final class TypedJson: Sendable {
             readerIndex += 1
         }
 
-        throw JSONError.unexpectedEndOfFile
-    }
-
-    @inline(__always)
-    private func skip(_ num: Int) throws {
-        readerIndex += num
-
-        guard readerIndex <= endIndex else {
-            throw JSONError.unexpectedEndOfFile
-        }
+        throw .unexpectedEndOfFile
     }
 
     @inline(__always)
@@ -284,7 +275,7 @@ public final class TypedJson: Sendable {
         array[from ..< to]
     }
 
-    func parseRoot() throws -> Entry? {
+    func parseRoot() throws(JSONError) -> Entry? {
         try consumeWhitespace()
         return try sliceValue()
     }

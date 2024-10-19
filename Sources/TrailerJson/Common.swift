@@ -39,13 +39,13 @@ extension UInt8 {
     static let _charCapitalE = UInt8(ascii: "E")
 }
 
-enum EscapedSequenceError: Swift.Error {
+public enum EscapedSequenceError: Swift.Error {
     case expectedLowSurrogateUTF8SequenceAfterHighSurrogate(index: Int)
     case unexpectedEscapedCharacter(ascii: UInt8, index: Int)
     case couldNotCreateUnicodeScalarFromUInt32(index: Int, unicodeScalarValue: UInt32)
 }
 
-enum JSONError: Error {
+public enum JSONError: Error {
     case unexpectedCharacter(ascii: UInt8, characterIndex: Int)
     case unexpectedEndOfFile
     case faultyEscapeSequence(EscapedSequenceError, in: String)
@@ -105,7 +105,7 @@ extension Slice<UnsafeRawBufferPointer> {
     }
 
     var asUnescapedString: String {
-        get throws {
+        get throws(JSONError) {
             var output: String?
             var readerIndex = startIndex
             let end = endIndex
@@ -121,7 +121,7 @@ extension Slice<UnsafeRawBufferPointer> {
 
                 switch byte {
                 case 0 ... 31:
-                    throw JSONError.unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
+                    throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
 
                 case ._backslash:
                     if let existing = output {
@@ -267,12 +267,12 @@ extension Slice<UnsafeRawBufferPointer> {
     }
 
     var asFloat: Float {
-        get throws {
+        get throws(JSONError) {
             let str = self[startIndex ..< endIndex].asRawString
             if let value = Float(str) {
                 return value
             }
-            throw JSONError.numberIsNotRepresentableInSwift(parsed: str)
+            throw .numberIsNotRepresentableInSwift(parsed: str)
         }
     }
 }
