@@ -187,17 +187,24 @@ public final class TypedJson: Sendable {
 
     private func sliceString() -> Entry {
         let stringStartIndex = readerIndex
+        var inEscape = false
 
         while readerIndex < endIndex {
-            if array[readerIndex] == ._quote {
-                if readerIndex == stringStartIndex {
+            let byte = array[readerIndex]
+            if inEscape {
+                inEscape = false
+            } else {
+                switch byte {
+                case ._quote:
+                    let quoteIndex = readerIndex
                     readerIndex += 1
-                    return .string(self, from: stringStartIndex, to: stringStartIndex)
-                }
-                let previousIndex = readerIndex - 1
-                if previousIndex >= stringStartIndex, array[previousIndex] != ._backslash {
-                    readerIndex += 1
-                    return .string(self, from: stringStartIndex, to: previousIndex + 1)
+                    return .string(self, from: stringStartIndex, to: quoteIndex)
+
+                case ._backslash:
+                    inEscape = true
+
+                default:
+                    break
                 }
             }
             readerIndex += 1

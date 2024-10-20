@@ -6,6 +6,18 @@ extension String: @retroactive Error {}
 
 struct TrailerJsonTests {
     @Test
+    func testGitHubIssueList() throws {
+        let url = Bundle.module.url(forResource: "issueList", withExtension: "json")!
+        let jsonData = try! Data(contentsOf: url)
+        let object = try jsonData.withUnsafeBytes {
+            try TrailerJson.parse(bytes: $0) as? [String: Sendable]
+        }
+        guard object?["data"] != nil else {
+            throw "No object"
+        }
+    }
+
+    @Test
     func testTrickyCharacterDecoding() throws {
         let v1 = "Value with unicode 🙎🏽"
         let v2 = "🙎🏽"

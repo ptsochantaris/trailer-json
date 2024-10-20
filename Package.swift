@@ -20,7 +20,7 @@ let package = Package(
 
         .testTarget(name: "TrailerJsonTests",
                     dependencies: ["TrailerJson"],
-                    resources: [.copy("10mb.json")]),
+                    resources: [.copy("10mb.json"), .copy("issueList.json")]),
 
         .executableTarget(name: "Benchmark",
                           dependencies: ["TrailerJson"],

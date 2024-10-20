@@ -4,6 +4,17 @@ import Testing
 
 struct TypedJsonTests {
     @Test
+    func testGitHubIssueList() throws {
+        let url = Bundle.module.url(forResource: "issueList", withExtension: "json")!
+        let jsonData = try! Data(contentsOf: url)
+        let object = try jsonData.asTypedJson()
+
+        guard object?.potentialObject(named: "data") != nil else {
+            throw "No object"
+        }
+    }
+
+    @Test
     func testTrickyCharacterDecoding() throws {
         let v1 = "Value with unicode 🙎🏽"
         let v2 = "🙎🏽"
@@ -236,6 +247,13 @@ struct TypedJsonTests {
         try parsed("\"a\"") {
             try #expect($0?.asString == "a")
         }
+    }
+
+    @Test
+    func testEscapedQuoteEnding() throws {
+        let json = "{ \"data\": \"1\\\\2\\\\\" }"
+        let object = try json.data(using: .utf8)!.asTypedJson()
+        #expect(object?.potentialString(named: "data") == "1\\2\\")
     }
 
     @Test
