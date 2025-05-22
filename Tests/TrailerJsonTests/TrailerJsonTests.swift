@@ -6,7 +6,7 @@ extension String: @retroactive Error {}
 
 struct TrailerJsonTests {
     @Test
-    func testGitHubIssueList() throws {
+    func gitHubIssueList() throws {
         let url = Bundle.module.url(forResource: "issueList", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
         let object = try jsonData.withUnsafeBytes {
@@ -18,7 +18,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func testTrickyCharacterDecoding() throws {
+    func trickyCharacterDecoding() throws {
         let v1 = "Value with unicode 🙎🏽"
         let v2 = "🙎🏽"
         let v3 = "🙎🏽 Value with unicode"
@@ -66,7 +66,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func testInvalidPayload() throws {
+    func invalidPayload() throws {
         func checkThrows(_ string: String?) {
             do {
                 let data = string?.data(using: .utf8) ?? Data()
@@ -86,7 +86,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func testFragmentParsing() throws {
+    func fragmentParsing() throws {
         let data0 = "5".data(using: .utf8)!
         #expect(try data0.asJson() as? Int == 5)
 
@@ -142,7 +142,7 @@ struct TrailerJsonTests {
         #expect(try data52.asJson() as? String == "a")
     }
 
-    @Test func testUnicodeFragment() async throws {
+    @Test func unicodeFragment() async throws {
         let data53 = "\"Prefix 🙎🏽 followed by unicode\"".data(using: .utf8)!
         #expect(try data53.asJson() as? String == "Prefix 🙎🏽 followed by unicode")
 
@@ -154,7 +154,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func testMock() throws {
+    func mock() throws {
         let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
         let object = try jsonData.withUnsafeBytes {
@@ -193,7 +193,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func testNetwork() async throws {
+    func network() async throws {
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
 

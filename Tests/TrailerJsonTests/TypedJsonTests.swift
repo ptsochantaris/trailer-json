@@ -4,7 +4,7 @@ import Testing
 
 struct TypedJsonTests {
     @Test
-    func testGitHubIssueList() throws {
+    func gitHubIssueList() throws {
         let url = Bundle.module.url(forResource: "issueList", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
         let object = try jsonData.asTypedJson()
@@ -15,7 +15,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func testTrickyCharacterDecoding() throws {
+    func trickyCharacterDecoding() throws {
         let v1 = "Value with unicode 🙎🏽"
         let v2 = "🙎🏽"
         let v3 = "🙎🏽 Value with unicode"
@@ -72,7 +72,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func testEmptyStringValue() throws {
+    func emptyStringValue() throws {
         let testDictionary: [String: Sendable] = ["body": ""]
 
         let data = try JSONSerialization.data(withJSONObject: testDictionary)
@@ -91,7 +91,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func testInvalidPayload() throws {
+    func invalidPayload() throws {
         func checkThrows(_ string: String?) {
             do {
                 let data = string?.data(using: .utf8) ?? Data()
@@ -148,7 +148,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func testFragmentParsing() throws {
+    func fragmentParsing() throws {
         func parsed(_ string: String, completion: (TypedJson.Entry?) throws -> Void) throws {
             try completion(string.data(using: .utf8)!.asTypedJson())
         }
@@ -250,14 +250,14 @@ struct TypedJsonTests {
     }
 
     @Test
-    func testEscapedQuoteEnding() throws {
+    func escapedQuoteEnding() throws {
         let json = "{ \"data\": \"1\\\\2\\\\\" }"
         let object = try json.data(using: .utf8)!.asTypedJson()
         #expect(object?.potentialString(named: "data") == "1\\2\\")
     }
 
     @Test
-    func testMock() throws {
+    func mock() throws {
         let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
         let jsonData = try! Data(contentsOf: url)
 
@@ -288,7 +288,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func testNetwork() async throws {
+    func network() async throws {
         let url = URL(string: "http://date.jsontest.com")!
         let data = try await URLSession.shared.data(from: url).0
 
