@@ -19,11 +19,10 @@ import Foundation
  */
 public final class TypedJson: Sendable {
     private nonisolated(unsafe) let array: UnsafeRawBufferPointer
-    private let endIndex: Int
     private let needsDealloc: Bool
-    private nonisolated(unsafe) var readerIndex = 0
+    private nonisolated(unsafe) let counter: Counter
 
-    /**
+    /*
      Creates a `TypedJson` instance for parsing data.
      - Parameter bytes: A pointer to the data to parse. This initialiser will make a copy of the data so the original can be discarded.
      ```
@@ -40,7 +39,7 @@ public final class TypedJson: Sendable {
         let mutable = UnsafeMutableRawBufferPointer.allocate(byteCount: bytes.count, alignment: 0)
         mutable.copyBytes(from: bytes)
         array = UnsafeRawBufferPointer(mutable)
-        endIndex = bytes.endIndex
+        counter = Counter(total: bytes.endIndex)
         needsDealloc = true
     }
 
@@ -65,7 +64,7 @@ public final class TypedJson: Sendable {
      */
     public init(bytesNoCopy: UnsafeRawBufferPointer) {
         array = bytesNoCopy
-        endIndex = bytesNoCopy.endIndex
+        counter = Counter(total: bytesNoCopy.endIndex)
         needsDealloc = false
     }
 
@@ -76,9 +75,9 @@ public final class TypedJson: Sendable {
     }
 
     private func sliceValue() throws(JSONError) -> Entry? {
-        while readerIndex < endIndex {
-            let byte = array[readerIndex]
-            readerIndex += 1
+        while counter.hasMore {
+            let byte = array[counter.currentIndex]
+            counter.increment()
 
             switch byte {
             case ._quote:
@@ -88,18 +87,18 @@ public final class TypedJson: Sendable {
             case ._openbracket:
                 return try sliceArray()
             case ._charF:
-                readerIndex += 4
-                return .bool(self, from: readerIndex - 5, to: readerIndex)
+                counter.increment(by: 4)
+                return .bool(self, from: counter.currentIndex - 5, to: counter.currentIndex)
             case ._charT:
-                readerIndex += 3
-                return .bool(self, from: readerIndex - 4, to: readerIndex)
+                counter.increment(by: 3)
+                return .bool(self, from: counter.currentIndex - 4, to: counter.currentIndex)
             case ._charN:
-                readerIndex += 3
+                counter.increment(by: 3)
                 return nil
             case ._minus, ._zero ... ._nine:
                 return sliceNumber()
             default:
-                throw .unexpectedCharacter(ascii: byte, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex)
             }
         }
 
@@ -112,7 +111,7 @@ public final class TypedJson: Sendable {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebracket {
             // if the first char after whitespace is a closing bracket, we found an empty array
-            readerIndex += 1
+            counter.increment()
             return .array([])
         }
 
@@ -128,21 +127,21 @@ public final class TypedJson: Sendable {
             let ascii = try consumeWhitespace()
             switch ascii {
             case ._closebracket:
-                readerIndex += 1
+                counter.increment()
                 return .array(array)
 
             case ._comma:
                 // consume the comma
-                readerIndex += 1
+                counter.increment()
                 // consume the whitespace before the next value
                 if try consumeWhitespace() == ._closebracket {
                     // the foundation json implementation does support trailing commas
-                    readerIndex += 1
+                    counter.increment()
                     return .array(array)
                 }
 
             default:
-                throw .unexpectedCharacter(ascii: ascii, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: ascii, characterIndex: counter.currentIndex)
             }
         }
     }
@@ -151,53 +150,53 @@ public final class TypedJson: Sendable {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebrace {
             // if the first char after whitespace is a closing bracket, we found an empty object
-            readerIndex += 1
+            counter.increment()
             return nil
         }
 
         var map = [String: Entry](minimumCapacity: 8)
 
         while true {
-            readerIndex += 1 // quote
+            counter.increment() // quote
             let key = sliceRawString()
             let colon = try consumeWhitespace()
             guard colon == ._colon else {
-                throw .unexpectedCharacter(ascii: colon, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: colon, characterIndex: counter.currentIndex)
             }
-            readerIndex += 1 // colon
+            counter.increment() // colon
             try consumeWhitespace()
             map[key] = try sliceValue()
 
             let commaOrBrace = try consumeWhitespace()
-            readerIndex += 1
+            counter.increment()
             switch commaOrBrace {
             case ._closebrace:
                 return .object(map)
             case ._comma:
                 if try consumeWhitespace() == ._closebrace {
                     // the foundation json implementation does support trailing commas
-                    readerIndex += 1
+                    counter.increment()
                     return .object(map)
                 }
             default:
-                throw .unexpectedCharacter(ascii: commaOrBrace, characterIndex: readerIndex)
+                throw .unexpectedCharacter(ascii: commaOrBrace, characterIndex: counter.currentIndex)
             }
         }
     }
 
     private func sliceString() -> Entry {
-        let stringStartIndex = readerIndex
+        let stringStartIndex = counter.currentIndex
         var inEscape = false
 
-        while readerIndex < endIndex {
-            let byte = array[readerIndex]
+        while counter.hasMore {
+            let byte = array[counter.currentIndex]
             if inEscape {
                 inEscape = false
             } else {
                 switch byte {
                 case ._quote:
-                    let quoteIndex = readerIndex
-                    readerIndex += 1
+                    let quoteIndex = counter.currentIndex
+                    counter.increment()
                     return .string(self, from: stringStartIndex, to: quoteIndex)
 
                 case ._backslash:
@@ -207,66 +206,66 @@ public final class TypedJson: Sendable {
                     break
                 }
             }
-            readerIndex += 1
+            counter.increment()
         }
 
-        return .string(self, from: stringStartIndex, to: readerIndex - 1)
+        return .string(self, from: stringStartIndex, to: counter.currentIndex - 1)
     }
 
     private func sliceRawString() -> String {
-        let stringStartIndex = readerIndex
+        let stringStartIndex = counter.currentIndex
 
-        while readerIndex < endIndex {
-            if array[readerIndex] == ._quote {
-                let previousIndex = readerIndex - 1
+        while counter.hasMore {
+            if array[counter.currentIndex] == ._quote {
+                let previousIndex = counter.currentIndex - 1
                 if previousIndex >= stringStartIndex, array[previousIndex] != ._backslash {
-                    readerIndex += 1
+                    counter.increment()
                     return array[stringStartIndex ... previousIndex].asRawString
                 }
             }
-            readerIndex += 1
+            counter.increment()
         }
 
-        return array[stringStartIndex ..< readerIndex - 1].asRawString
+        return array[stringStartIndex ..< counter.currentIndex - 1].asRawString
     }
 
     private func sliceNumber() -> Entry? {
-        let startIndex = readerIndex - 1
+        let startIndex = counter.currentIndex - 1
         var float = false
 
-        while readerIndex < endIndex {
-            switch array[readerIndex] {
+        while counter.hasMore {
+            switch array[counter.currentIndex] {
             case ._period:
                 float = true
-                readerIndex += 1
+                counter.increment()
 
             case ._closebrace, ._closebracket, ._comma, ._newline, ._return, ._space, ._tab:
                 if float {
-                    return .float(self, from: startIndex, to: readerIndex)
+                    return .float(self, from: startIndex, to: counter.currentIndex)
                 } else {
-                    return .int(self, from: startIndex, to: readerIndex)
+                    return .int(self, from: startIndex, to: counter.currentIndex)
                 }
 
             default:
-                readerIndex += 1
+                counter.increment()
             }
         }
 
         if float {
-            return .float(self, from: startIndex, to: readerIndex)
+            return .float(self, from: startIndex, to: counter.currentIndex)
         } else {
-            return .int(self, from: startIndex, to: readerIndex)
+            return .int(self, from: startIndex, to: counter.currentIndex)
         }
     }
 
     @discardableResult
     private func consumeWhitespace() throws(JSONError) -> UInt8 {
-        while readerIndex < endIndex {
-            let ascii = array[readerIndex]
+        while counter.hasMore {
+            let ascii = array[counter.currentIndex]
             if ascii > 32 {
                 return ascii
             }
-            readerIndex += 1
+            counter.increment()
         }
 
         throw .unexpectedEndOfFile

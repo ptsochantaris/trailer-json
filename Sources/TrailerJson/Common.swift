@@ -39,8 +39,29 @@ extension UInt8 {
     static let _charCapitalE = UInt8(ascii: "E")
 }
 
-final class Counter: Sendable {
-    nonisolated(unsafe) var readerIndex = 0
+final class Counter {
+    private var readerIndex = 0
+    private let total: Int
+
+    var currentIndex: Int {
+        readerIndex
+    }
+
+    var hasMore: Bool {
+        readerIndex < total
+    }
+
+    init(total: Int) {
+        self.total = total
+    }
+
+    func increment() {
+        readerIndex += 1
+    }
+
+    func increment(by amount: Int) {
+        readerIndex += amount
+    }
 }
 
 public enum EscapedSequenceError: Swift.Error {

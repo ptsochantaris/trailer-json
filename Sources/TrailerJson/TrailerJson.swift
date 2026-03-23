@@ -21,13 +21,11 @@ private typealias JSON = [String: Sendable]
  */
 public struct TrailerJson: Sendable {
     private nonisolated(unsafe) let array: UnsafeRawBufferPointer
-    private let endIndex: Int
-    private let counter: Counter
+    private nonisolated(unsafe) let counter: Counter
 
     private init(bytes: UnsafeRawBufferPointer) throws(JSONError) {
         array = bytes
-        endIndex = bytes.endIndex
-        counter = Counter()
+        counter = Counter(total: bytes.count)
         try consumeWhitespace()
     }
 
@@ -50,9 +48,9 @@ public struct TrailerJson: Sendable {
     // MARK: Generic Value Parsing
 
     private func parseValue() throws(JSONError) -> Sendable? {
-        while counter.readerIndex < endIndex {
-            let byte = array[counter.readerIndex]
-            counter.readerIndex += 1
+        while counter.hasMore {
+            let byte = array[counter.currentIndex]
+            counter.increment()
 
             switch byte {
             case ._quote:
@@ -62,22 +60,22 @@ public struct TrailerJson: Sendable {
             case ._openbracket:
                 return try parseArray()
             case ._charF:
-                counter.readerIndex += 4
+                counter.increment(by: 4)
                 return false
             case ._charT:
-                counter.readerIndex += 3
+                counter.increment(by: 3)
                 return true
             case ._charN:
-                counter.readerIndex += 3
+                counter.increment(by: 3)
                 return nil
             case ._minus:
                 return try parseNumber(positive: false)
             case ._zero ... ._nine:
                 return try parseNumber(positive: true)
             case 0 ... 32:
-                counter.readerIndex += 1
+                counter.increment()
             default:
-                throw .unexpectedCharacter(ascii: byte, characterIndex: counter.readerIndex)
+                throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex)
             }
         }
 
@@ -90,7 +88,7 @@ public struct TrailerJson: Sendable {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebracket {
             // if the first char after whitespace is a closing bracket, we found an empty array
-            counter.readerIndex += 1
+            counter.increment()
             return []
         }
 
@@ -107,21 +105,21 @@ public struct TrailerJson: Sendable {
             let ascii = try consumeWhitespace()
             switch ascii {
             case ._closebracket:
-                counter.readerIndex += 1
+                counter.increment()
                 return array
 
             case ._comma:
                 // consume the comma
-                counter.readerIndex += 1
+                counter.increment()
                 // consume the whitespace before the next value
                 if try consumeWhitespace() == ._closebracket {
                     // the foundation json implementation does support trailing commas
-                    counter.readerIndex += 1
+                    counter.increment()
                     return array
                 }
 
             default:
-                throw .unexpectedCharacter(ascii: ascii, characterIndex: counter.readerIndex)
+                throw .unexpectedCharacter(ascii: ascii, characterIndex: counter.currentIndex)
             }
         }
     }
@@ -132,50 +130,50 @@ public struct TrailerJson: Sendable {
         // parse first value or end immediatly
         if try consumeWhitespace() == ._closebrace {
             // if the first char after whitespace is a closing bracket, we found an empty array
-            counter.readerIndex += 1
+            counter.increment()
             return [:]
         }
 
         var object = JSON(minimumCapacity: 8)
 
         while true {
-            counter.readerIndex += 1 // quote
+            counter.increment() // quote
             let key = try readString()
             let colon = try consumeWhitespace()
             guard colon == ._colon else {
-                throw .unexpectedCharacter(ascii: colon, characterIndex: counter.readerIndex)
+                throw .unexpectedCharacter(ascii: colon, characterIndex: counter.currentIndex)
             }
-            counter.readerIndex += 1
+            counter.increment()
             try consumeWhitespace()
             object[key] = try parseValue()
 
             let commaOrBrace = try consumeWhitespace()
             switch commaOrBrace {
             case ._closebrace:
-                counter.readerIndex += 1
+                counter.increment()
                 return object
             case ._comma:
-                counter.readerIndex += 1
+                counter.increment()
                 if try consumeWhitespace() == ._closebrace {
                     // the foundation json implementation does support trailing commas
-                    counter.readerIndex += 1
+                    counter.increment()
                     return object
                 }
                 continue
             default:
-                throw .unexpectedCharacter(ascii: commaOrBrace, characterIndex: counter.readerIndex)
+                throw .unexpectedCharacter(ascii: commaOrBrace, characterIndex: counter.currentIndex)
             }
         }
     }
 
     @discardableResult
     private func consumeWhitespace() throws(JSONError) -> UInt8 {
-        while counter.readerIndex < endIndex {
-            let ascii = array[counter.readerIndex]
+        while counter.hasMore {
+            let ascii = array[counter.currentIndex]
             if ascii > 32 {
                 return ascii
             }
-            counter.readerIndex += 1
+            counter.increment()
         }
 
         throw .unexpectedEndOfFile
@@ -185,18 +183,18 @@ public struct TrailerJson: Sendable {
 
     private func readString() throws(JSONError) -> String {
         var output: String?
-        var segmentStartIndex = counter.readerIndex
+        var segmentStartIndex = counter.currentIndex
 
-        while counter.readerIndex < endIndex {
-            let byte = array[counter.readerIndex]
+        while counter.hasMore {
+            let byte = array[counter.currentIndex]
 
             switch byte {
             case 0 ... 31:
-                throw .unexpectedCharacter(ascii: byte, characterIndex: counter.readerIndex)
+                throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex)
 
             case ._quote:
-                let text = array[segmentStartIndex ..< counter.readerIndex].asRawString
-                counter.readerIndex += 1
+                let text = array[segmentStartIndex ..< counter.currentIndex].asRawString
+                counter.increment()
 
                 if let output {
                     return output + text
@@ -206,13 +204,13 @@ public struct TrailerJson: Sendable {
 
             case ._backslash:
                 if let existing = output {
-                    output = existing + array[segmentStartIndex ..< counter.readerIndex].asRawString
+                    output = existing + array[segmentStartIndex ..< counter.currentIndex].asRawString
                 } else {
-                    output = array[segmentStartIndex ..< counter.readerIndex].asRawString
+                    output = array[segmentStartIndex ..< counter.currentIndex].asRawString
                 }
 
-                counter.readerIndex += 1
-                let seq = array.parseEscapeSequence(at: counter.readerIndex)
+                counter.increment()
+                let seq = array.parseEscapeSequence(at: counter.currentIndex)
                 if let text = seq.1 {
                     if let existing = output {
                         output = existing + text
@@ -220,11 +218,11 @@ public struct TrailerJson: Sendable {
                         output = text
                     }
                 }
-                counter.readerIndex += seq.0
-                segmentStartIndex = counter.readerIndex
+                counter.increment(by: seq.0)
+                segmentStartIndex = counter.currentIndex
 
             default:
-                counter.readerIndex += 1
+                counter.increment()
             }
         }
 
@@ -234,16 +232,16 @@ public struct TrailerJson: Sendable {
     // MARK: Numbers
 
     private func parseNumber(positive: Bool) throws(JSONError) -> Sendable {
-        let startIndex = counter.readerIndex - 1
+        let startIndex = counter.currentIndex - 1
 
         var pastControlChar: ControlCharacter = .operand
         var numbersSinceControlChar = positive
 
         while true {
             let byte: UInt8
-            if counter.readerIndex < endIndex {
-                byte = array[counter.readerIndex]
-                counter.readerIndex += 1
+            if counter.hasMore {
+                byte = array[counter.currentIndex]
+                counter.increment()
             } else {
                 byte = 0
             }
@@ -254,7 +252,7 @@ public struct TrailerJson: Sendable {
 
             case ._period:
                 guard numbersSinceControlChar, pastControlChar == .operand else {
-                    throw .unexpectedCharacter(ascii: byte, characterIndex: counter.readerIndex - 1)
+                    throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex - 1)
                 }
                 pastControlChar = .decimalPoint
                 numbersSinceControlChar = false
@@ -263,14 +261,14 @@ public struct TrailerJson: Sendable {
                 guard numbersSinceControlChar,
                       pastControlChar == .operand || pastControlChar == .decimalPoint
                 else {
-                    throw .unexpectedCharacter(ascii: byte, characterIndex: counter.readerIndex - 1)
+                    throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex - 1)
                 }
                 pastControlChar = .exp
                 numbersSinceControlChar = false
 
             case ._minus, ._plus:
                 guard !numbersSinceControlChar, pastControlChar == .exp else {
-                    throw .unexpectedCharacter(ascii: byte, characterIndex: counter.readerIndex - 1)
+                    throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex - 1)
                 }
                 pastControlChar = .expOperator
                 numbersSinceControlChar = false
@@ -282,29 +280,29 @@ public struct TrailerJson: Sendable {
                     }
                 } else {
                     guard numbersSinceControlChar else {
-                        throw .unexpectedCharacter(ascii: byte, characterIndex: counter.readerIndex - 1)
+                        throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex - 1)
                     }
-                    counter.readerIndex -= 1
+                    counter.increment(by: -1)
                 }
 
                 switch pastControlChar {
                 case .decimalPoint:
-                    let stringValue = array[startIndex ..< counter.readerIndex].asRawString
+                    let stringValue = array[startIndex ..< counter.currentIndex].asRawString
                     guard let result = Float(stringValue) else {
                         throw .numberIsNotRepresentableInSwift(parsed: stringValue)
                     }
                     return result
                 case .exp, .expOperator:
-                    let stringValue = array[startIndex ..< counter.readerIndex].asRawString
+                    let stringValue = array[startIndex ..< counter.currentIndex].asRawString
                     throw .numberIsNotRepresentableInSwift(parsed: stringValue)
                 case .operand:
                     var total = 0
                     if positive {
-                        for index in startIndex ..< counter.readerIndex {
+                        for index in startIndex ..< counter.currentIndex {
                             total = (total * 10) + Int(array[index] & 15)
                         }
                     } else {
-                        for index in startIndex + 1 ..< counter.readerIndex {
+                        for index in startIndex + 1 ..< counter.currentIndex {
                             total = (total * 10) - Int(array[index] & 15)
                         }
                     }
@@ -312,7 +310,7 @@ public struct TrailerJson: Sendable {
                 }
 
             default:
-                throw .unexpectedCharacter(ascii: byte, characterIndex: counter.readerIndex - 1)
+                throw .unexpectedCharacter(ascii: byte, characterIndex: counter.currentIndex - 1)
             }
         }
     }

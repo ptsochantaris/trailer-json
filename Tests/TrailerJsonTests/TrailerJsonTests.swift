@@ -6,9 +6,9 @@ extension String: @retroactive Error {}
 
 struct TrailerJsonTests {
     @Test
-    func gitHubIssueList() throws {
-        let url = Bundle.module.url(forResource: "issueList", withExtension: "json")!
-        let jsonData = try! Data(contentsOf: url)
+    func `git hub issue list`() throws {
+        let url = try #require(Bundle.module.url(forResource: "issueList", withExtension: "json"))
+        let jsonData = try Data(contentsOf: url)
         let object = try jsonData.withUnsafeBytes {
             try TrailerJson.parse(bytes: $0) as? [String: Sendable]
         }
@@ -18,7 +18,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func trickyCharacterDecoding() throws {
+    func `tricky character decoding`() throws {
         let v1 = "Value with unicode 🙎🏽"
         let v2 = "🙎🏽"
         let v3 = "🙎🏽 Value with unicode"
@@ -66,7 +66,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func invalidPayload() throws {
+    func `invalid payload`() {
         func checkThrows(_ string: String?) {
             do {
                 let data = string?.data(using: .utf8) ?? Data()
@@ -86,7 +86,7 @@ struct TrailerJsonTests {
     }
 
     @Test
-    func fragmentParsing() throws {
+    func `fragment parsing`() throws {
         let data0 = "5".data(using: .utf8)!
         #expect(try data0.asJson() as? Int == 5)
 
@@ -142,7 +142,7 @@ struct TrailerJsonTests {
         #expect(try data52.asJson() as? String == "a")
     }
 
-    @Test func unicodeFragment() async throws {
+    @Test func `unicode fragment`() throws {
         let data53 = "\"Prefix 🙎🏽 followed by unicode\"".data(using: .utf8)!
         #expect(try data53.asJson() as? String == "Prefix 🙎🏽 followed by unicode")
 
@@ -155,8 +155,8 @@ struct TrailerJsonTests {
 
     @Test
     func mock() throws {
-        let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
-        let jsonData = try! Data(contentsOf: url)
+        let url = try #require(Bundle.module.url(forResource: "10mb", withExtension: "json"))
+        let jsonData = try Data(contentsOf: url)
         let object = try jsonData.withUnsafeBytes {
             try TrailerJson.parse(bytes: $0) as? [String: Sendable]
         }
@@ -194,12 +194,15 @@ struct TrailerJsonTests {
 
     @Test
     func network() async throws {
-        let url = URL(string: "http://date.jsontest.com")!
+        let url = try #require(URL(string: "https://timeapi.io/api/v1/time/current/coordinate?latitude=38.9&longitude=-77.03"))
         let data = try await URLSession.shared.data(from: url).0
 
         if let json = try data.asJsonObject(),
            let timeString = json["time"] as? String {
             NSLog("The time is %@", timeString)
+
+            #expect((json["timezone"] as? String) == "America/New_York")
+
         } else {
             throw "There is no spoon"
         }

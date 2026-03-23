@@ -4,9 +4,9 @@ import Testing
 
 struct TypedJsonTests {
     @Test
-    func gitHubIssueList() throws {
-        let url = Bundle.module.url(forResource: "issueList", withExtension: "json")!
-        let jsonData = try! Data(contentsOf: url)
+    func `git hub issue list`() throws {
+        let url = try #require(Bundle.module.url(forResource: "issueList", withExtension: "json"))
+        let jsonData = try Data(contentsOf: url)
         let object = try jsonData.asTypedJson()
 
         guard object?.potentialObject(named: "data") != nil else {
@@ -15,7 +15,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func trickyCharacterDecoding() throws {
+    func `tricky character decoding`() throws {
         let v1 = "Value with unicode 🙎🏽"
         let v2 = "🙎🏽"
         let v3 = "🙎🏽 Value with unicode"
@@ -72,7 +72,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func emptyStringValue() throws {
+    func `empty string value`() throws {
         let testDictionary: [String: Sendable] = ["body": ""]
 
         let data = try JSONSerialization.data(withJSONObject: testDictionary)
@@ -91,7 +91,7 @@ struct TypedJsonTests {
     }
 
     @Test
-    func invalidPayload() throws {
+    func `invalid payload`() throws {
         func checkThrows(_ string: String?) {
             do {
                 let data = string?.data(using: .utf8) ?? Data()
@@ -109,7 +109,8 @@ struct TypedJsonTests {
         checkThrows(" wut { \"a\":\"b\" }   meh  ")
 
         let test = "[5, 5.5, \"a\",[1,2],{\"a\":\"b\"}]".data(using: .utf8)!
-        let json = try! test.asTypedJson()!
+        let typed = try test.asTypedJson()
+        let json = try #require(typed)
 
         func checkTypeError(shouldThrow: Bool, block: () throws -> Void) throws {
             do {
@@ -148,9 +149,10 @@ struct TypedJsonTests {
     }
 
     @Test
-    func fragmentParsing() throws {
+    func `fragment parsing`() throws {
         func parsed(_ string: String, completion: (TypedJson.Entry?) throws -> Void) throws {
-            try completion(string.data(using: .utf8)!.asTypedJson())
+            let typed = try string.data(using: .utf8)?.asTypedJson()
+            try completion(typed)
         }
 
         try parsed("5") {
@@ -250,16 +252,17 @@ struct TypedJsonTests {
     }
 
     @Test
-    func escapedQuoteEnding() throws {
+    func `escaped quote ending`() throws {
         let json = "{ \"data\": \"1\\\\2\\\\\" }"
-        let object = try json.data(using: .utf8)!.asTypedJson()
-        #expect(object?.potentialString(named: "data") == "1\\2\\")
+        let typed = try json.data(using: .utf8)?.asTypedJson()
+        let object = try #require(typed)
+        #expect(object.potentialString(named: "data") == "1\\2\\")
     }
 
     @Test
     func mock() throws {
-        let url = Bundle.module.url(forResource: "10mb", withExtension: "json")!
-        let jsonData = try! Data(contentsOf: url)
+        let url = try #require(Bundle.module.url(forResource: "10mb", withExtension: "json"))
+        let jsonData = try Data(contentsOf: url)
 
         guard let object = try jsonData.asTypedJson() else {
             throw "Did not parse root entry"
@@ -289,12 +292,14 @@ struct TypedJsonTests {
 
     @Test
     func network() async throws {
-        let url = URL(string: "http://date.jsontest.com")!
+        let url = try #require(URL(string: "https://timeapi.io/api/v1/time/current/coordinate?latitude=38.9&longitude=-77.03"))
         let data = try await URLSession.shared.data(from: url).0
 
         guard let object = try data.asTypedJson() else {
             throw "Did not parse root entry"
         }
+
+        #expect(try object["timezone"].asString == "America/New_York")
 
         let timeString = try object["time"].asString
         NSLog("The time is %@", timeString)
